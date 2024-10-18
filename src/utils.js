@@ -7,6 +7,10 @@ export const SERVER_TIMEZONE = 'America/Los_Angeles';
  * in milliseconds
  */
 export const TIME_PER_ERINN_MINUTE = 1500;
+/**
+ * in milliseconds
+ */
+export const TIME_PER_ERINN_DAY = TIME_PER_ERINN_MINUTE*60*24;
 
 
 /**
@@ -93,11 +97,14 @@ export function parseSettings(input) {
 /**
  * checks if the given string is a valid server date time string, formatted as
  * 
- * yyyy-mm-ddThh:mm:ssS or yyyy-mm-ddThh:mm:ss.sssS for milliseconds, or yyyy-mm-ddThh:mmS. Numbers besides year can be single digit. The T and S can be lowercase.
+ * yyyy-mm-ddThh:mm:ssS or yyyy-mm-ddThh:mm:ss.sssS for milliseconds, or yyyy-mm-ddThh:mmS
+ * 
+ * Numbers besides year can be single digit. The T and S can be lowercase.
  * 
  * @param {string} input 
- * @returns - returns an object with the date and time from the string separated as individual numbers, and a Date. Note the Date gives the correct
- * date in any time zone, but the other numbers in the returned object use the numbers from the input string which were not adjusted for time zone.
+ * @returns
+ * - returns an object with the date and time from the string separated as individual numbers, and a Date (adjusted for time zone). 
+ * - Note the numbers in the returned object are just numbers from the input string which were not adjusted for time zone.
  */
 export function parseServerDateTime(input){
     // Regular expression to match the formats yyyy-mm-ddThh:mm:ssS or yyyy-mm-ddThh:mm:ss.sssS for milliseconds, or yyyy-mm-ddThh:mmS. Numbers besides year can be single digit. The T and S can be lowercase.
@@ -219,45 +226,32 @@ export function validateTimeStrings(times){
 }
 
 /**
- * takes and validates a duration time string (including Erinn time strings) converts it to a full server duration time string and milliseconds.
+ * takes and validates a Server or Erinn time string or duration and returns the number of milliseconds as a number.
  * 
- * This will also take a shortened server time string like 1:2s and turn it into a full time string like 01:02:00.000S
- * 
- * This assumes the time string given is a duration of time, not a point in time.
- * 
- * note: all the numbers will be 2 digits and milliseconds 3 digits, but this is a duration time string and not an actual time so hours can be more than 2 digits.
- * 
- * @param {string} timeString - the time string to convert. Can be in any valid time string format.
- * @returns - returns an object with the full duration in milliseconds and the time string in hh:mm:ss.sssS format, meant to be used as a duration of time. Returns false if the time string given was invalid.
+ * Returns false if time string provided was not a valid time string or duration.
+ * @param {string} timeString - the time string to convert
+ * @param {boolean} fromMidnight - optionally, if this is true then full days will be removed from the string (to give milliseconds from midnight, assuming duration 0:0 was a midnight)
+ * @return - number of milliseconds as a number
  */
-export function convertToRealtimeDuration(timeString){
-    // if the time string given was invalid or wasn't an Erinn time string, return false.
+export function convertTimeStringToRealMilliseconds(timeString, fromMidnight){
+    // if the time string given was invalid , return false.
     if(!validateDurationTimeStrings([timeString])) return false;
 
-    //prepare variables that will be used in the final return object
-    let realHours = 0;
-    let realMinutes = 0;
-    let realSeconds = 0;
-    let realMilliseconds = 0;
-    let totalRealMilliseconds = 0;
-
-    //first handle Erinn time strings
+    // Erinn time string
     if(timeString.slice(-1).toUpperCase() === 'E'){
-
         // extract the hours and minutes
         // remove the E, split by colons, and then convert to numbers
         const [hours, minutes] = timeString.slice(0, -1).split(':').map(Number);
 
-        const totalErinnMinutes = (hours * 60) + minutes;
+        let totalErinnMinutes = (hours * 60) + minutes;
+        if(fromMidnight){
+            //remove full days
+            totalErinnMinutes = totalErinnMinutes%1440;
+        }
 
-        // convert Erinn minutes to real milliseconds
-        totalRealMilliseconds = totalErinnMinutes * TIME_PER_ERINN_MINUTE;
-
-        // convert real seconds to real hours, minutes, and seconds
-        realHours = Math.floor(totalRealMilliseconds / 3600000); // 3600000 milliseconds in an hour
-        realMinutes = Math.floor((totalRealMilliseconds % 3600000) / 60000); // leftover after dividing by hours, divided by milliseconds in a minute
-        realSeconds = Math.floor((totalRealMilliseconds % 60000) / 1000); // leftover after dividing by minutes, divided by milliseconds in a second
-        realMilliseconds = Math.floor(totalRealMilliseconds % 1000); // leftover milliseconds after dividing by seconds
+        // convert Erinn minutes to real milliseconds and return.
+        return totalErinnMinutes * TIME_PER_ERINN_MINUTE;
+    // Server time string
     }else{
         //valid formats: hh:mmS, hh:mm:ssS, hh:mm:ss.sssS
         //trim off the S, split it up by the colons or periods, and convert to numbers
@@ -271,7 +265,53 @@ export function convertToRealtimeDuration(timeString){
         let milliseconds = trimmedTimeString[3] | 0;
 
         //calculate the total milliseconds
-        totalRealMilliseconds = (hours*3600000) + (minutes*60000) + (seconds*1000) + milliseconds;
+        let totalMilliseconds = (hours*3600000) + (minutes*60000) + (seconds*1000) + milliseconds;
+
+        if(fromMidnight){
+            //remove full days
+            totalMilliseconds = totalMilliseconds%86400000;
+        }
+        return totalMilliseconds;
+    }
+}
+
+/**
+ * takes and validates a duration time string (including Erinn time strings) and converts it to a full server duration time string and milliseconds.
+ * 
+ * This will also take a shortened server time string like 1:2s and turn it into a full time string like 01:02:00.000S
+ * 
+ * This assumes the time string given is a duration of time, not a point in time.
+ * 
+ * note: all the numbers will be 2 digits and milliseconds 3 digits, but this is a duration time string and not an actual time so hours can be more than 2 digits.
+ * 
+ * @param {string} timeString - the time string to convert. Can be in any valid time string format.
+ * @returns - returns an object with the full duration in milliseconds and the time string in hh:mm:ss.sssS format, meant to be used as a duration of time. Returns false if the time string given was invalid.
+ */
+export function convertTimeStringToFullServerDurationTimeString(timeString){
+    // if the time string given was invalid or wasn't an Erinn time string, return false.
+    if(!validateDurationTimeStrings([timeString])) return false;
+
+    //prepare variables that will be used in the final return object
+    let realHours = 0;
+    let realMinutes = 0;
+    let realSeconds = 0;
+    let realMilliseconds = 0;
+    let totalRealMilliseconds = 0;
+
+    //first handle Erinn time strings
+    if(timeString.slice(-1).toUpperCase() === 'E'){
+        // convert Erinn minutes to real milliseconds
+        totalRealMilliseconds = convertTimeStringToRealMilliseconds(timeString);
+
+        // convert real seconds to real hours, minutes, and seconds
+        realHours = Math.floor(totalRealMilliseconds / 3600000); // 3600000 milliseconds in an hour
+        realMinutes = Math.floor((totalRealMilliseconds % 3600000) / 60000); // leftover after dividing by hours, divided by milliseconds in a minute
+        realSeconds = Math.floor((totalRealMilliseconds % 60000) / 1000); // leftover after dividing by minutes, divided by milliseconds in a second
+        realMilliseconds = Math.floor(totalRealMilliseconds % 1000); // leftover milliseconds after dividing by seconds
+    //now handle server time strings
+    }else{
+        //calculate the total milliseconds
+        totalRealMilliseconds = convertTimeStringToRealMilliseconds(timeString);
         //and with that, calculate the other times
         realHours = Math.floor(totalRealMilliseconds / 3600000); // 3600000 milliseconds in an hour
         realMinutes = Math.floor((totalRealMilliseconds % 3600000) / 60000); // leftover after dividing by hours, divided by milliseconds in a minute
@@ -285,4 +325,103 @@ export function convertToRealtimeDuration(timeString){
         timestring: fullTimeString,
         milliseconds: totalRealMilliseconds
     }
+}
+
+/**
+ * takes and validates a time string (including Erinn time strings) and converts it to milliseconds after midnight.
+ * 
+ * This assumes the time string given is a point in time. If a duration is given, full days will be removed (assumes duration of 0 was midnight)
+ * 
+ * For Erinn time strings, this will give real time milliseconds after Erinn midnight that the time occurs.
+ * 
+ * For Server time strings, this will give milliseconds after server midnight that the time occurs.
+ * 
+ * @param {string} timeString - the time string to convert. Can be in any valid time string format.
+ * @returns - returns an object with the milliseconds after midnight that the time given occurred and a type that is either Erinn or Server. Returns false if the time string given was invalid.
+ */
+export function convertTimeStringToMillisecondsAfterMidnight(timeString){
+    // if the time string given was invalid return false.
+    if(!validateDurationTimeStrings([timeString])) return false;
+
+    //prepare variables that will be used in the final return object
+    let type = (timeString.slice(-1).toUpperCase() === 'E' ? 'Erinn' : 'Server');
+    let totalRealMilliseconds = 0;
+
+    //handle Erinn time strings
+    if(type === 'Erinn'){
+        // convert Erinn time string to real milliseconds, use optional parameter to remove full days from time string
+        totalRealMilliseconds = convertTimeStringToRealMilliseconds(timeString, true);
+    //handle Server time strings
+    }else{
+        // convert Server time string to real milliseconds, use optional parameter to remove full days from time string
+        totalRealMilliseconds = convertTimeStringToRealMilliseconds(timeString, true);
+    }
+
+    return {
+        type,
+        milliseconds: totalRealMilliseconds
+    }
+}
+
+/**
+ * takes and validates a time string and returns an Erinn time string.
+ * 
+ * The time string given can be a time or a duration. Either way, assuming the 0 value was also 00:00E, this function will return the time in the Erinn day.
+ * 
+ * @param {string} timeString - the Server time string to convert
+ * @returns - returns the equivalent full Erinn time string as a string, rounded down (1499 miliseconds turns into 0 Erinn minutes). For example '00:01E'.
+ * This is a time, not a duration. If the time string/duration time string given was multiple Erinn days long, this will return the time in the last Erinn day.
+ */
+export function convertToErinnTimeString(timeString){
+    // if the time string given was invalid return false.
+    if(!validateDurationTimeStrings([timeString])) return false;
+
+    //if this is already an Erinn time string, remove full Erin days from it and pad it if necessary so each group of numbers is 2 digits then return it.
+    if(timeString.slice(-1).toUpperCase() === 'E'){
+        let [hours, minutes] = timeString.slice(0, -1).split(':');
+        let totalErinnMinutes = (hours * 60) + minutes;
+        //remove full days
+        totalErinnMinutes = totalErinnMinutes%1440;
+        //set final hours and minutes
+        hours = Math.floor(totalErinnMinutes/60);
+        minutes = totalErinnMinutes%60;
+        //return the new string, padded so each group of numbers is 2 digits
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}E`;
+    //server time string
+    }else{
+        //get total milliseconds and remove full Erinn days
+        let milliseconds = convertTimeStringToRealMilliseconds(timeString) % TIME_PER_ERINN_DAY;
+        //convert to total Erinn minutes, rounded down
+        let totalErinnMinutes = Math.floor(milliseconds/TIME_PER_ERINN_MINUTE);
+        //set final hours and minutes
+        let hours = Math.floor(totalErinnMinutes/60);
+        let minutes = totalErinnMinutes%60;
+        //return the new string, padded so each group of numbers is 2 digits
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}E`;
+    }
+}
+
+/**
+ * takes a Date object and returns the milliseconds after the server timezone's midnight for that Date.
+ * @param {Date} date 
+ */
+export function dateToMillisecondsAfterServerMidnight(date){
+    //create the formatter in the server's timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: SERVER_TIMEZONE,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3,
+        hour12: false
+    });
+
+    //get the components of the date
+    const parts = formatter.formatToParts(date);
+
+    // Extract the components we need
+    const hour = parseInt(parts.find(p => p.type === 'hour').value);
+    const minute = parseInt(parts.find(p => p.type === 'minute').value);
+    const second = parseInt(parts.find(p => p.type === 'second').value);
+    const millisecond = parseInt(parts.find(p => p.type === 'fractionalSecond').value);
+
+    return hour*3600000 + minute*60000 + second*1000 + millisecond;
 }
