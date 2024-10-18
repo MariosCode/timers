@@ -44,7 +44,7 @@ export function rotateTimer (display, args, list) {
     //set up the timeout variable here so that it can be accessed elsewhere in case it needs to be canceled.
     let updateTimeout = null;
 
-    //first, handle rotation for changeEvery
+    // changeEvery type of rotation timer
     if(changeEvery){
         //convert to real time duration. This will turn erinn time strings or shorthand server time strings like 5:0s into
         //full server time strings like 05:00:00.000S and the number of real milliseconds.
@@ -61,6 +61,12 @@ export function rotateTimer (display, args, list) {
         function updateRotation(){
             //recalculate what the rotation should be at now
             rotation = Math.floor((Date.now() - epoch.dateObject.getTime()) / durationObject.milliseconds);
+
+            //use the rotation to get the corresponding item from the list
+            let currentSelection = list[rotation%list.length];
+            //TODO: implement displays. for now, just use the console.
+            console.log(`rotation timer update: ${currentSelection}`);
+
             // in case the timeout did not execute at the scheduled time, calculate how long to wait for the next scheduled time.
             // waitTime will be the duration between rotations, minus the amount of time that passed since the last rotation change.
             let waitTime = durationObject.milliseconds - ((Date.now() - epoch.dateObject.getTime()) % durationObject.milliseconds);
@@ -69,5 +75,11 @@ export function rotateTimer (display, args, list) {
             //call this function again at the scheduled time.
             updateTimeout = setTimeout(updateRotation, waitTime);
         }
+        //start the timer
+        updateRotation();
+
+    // changeAt type of rotation timer
+    }else if(changeAt){
+
     }
 }

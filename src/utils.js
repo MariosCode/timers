@@ -255,9 +255,9 @@ export function convertToRealtimeDuration(timeString){
 
         // convert real seconds to real hours, minutes, and seconds
         realHours = Math.floor(totalRealMilliseconds / 3600000); // 3600000 milliseconds in an hour
-        realMinutes = Math.floor((totalRealSeconds % 3600000) / 60000); // leftover after dividing by hours, divided by milliseconds in a minute
-        realSeconds = Math.floor((totalRealSeconds % 60000) / 1000); // leftover after dividing by minutes, divided by milliseconds in a second
-        realMilliseconds = Math.floor(totalRealSeconds % 1000); // leftover milliseconds after dividing by seconds
+        realMinutes = Math.floor((totalRealMilliseconds % 3600000) / 60000); // leftover after dividing by hours, divided by milliseconds in a minute
+        realSeconds = Math.floor((totalRealMilliseconds % 60000) / 1000); // leftover after dividing by minutes, divided by milliseconds in a second
+        realMilliseconds = Math.floor(totalRealMilliseconds % 1000); // leftover milliseconds after dividing by seconds
     }else{
         //valid formats: hh:mmS, hh:mm:ssS, hh:mm:ss.sssS
         //trim off the S, split it up by the colons or periods, and convert to numbers
@@ -265,18 +265,18 @@ export function convertToRealtimeDuration(timeString){
 
         //this is already in real time, but duration time strings don't have a limit to their digits. It's possible the time string was something like 1:1:99999S.
         //Add a 0 when a number is missing.
-        hours = trimmedTimeString[0] | 0;
-        minutes = trimmedTimeString[1] | 0;
-        seconds = trimmedTimeString[2] | 0;
-        milliseconds = trimmedTimeString[3] | 0;
+        let hours = trimmedTimeString[0] | 0;
+        let minutes = trimmedTimeString[1] | 0;
+        let seconds = trimmedTimeString[2] | 0;
+        let milliseconds = trimmedTimeString[3] | 0;
 
         //calculate the total milliseconds
         totalRealMilliseconds = (hours*3600000) + (minutes*60000) + (seconds*1000) + milliseconds;
         //and with that, calculate the other times
         realHours = Math.floor(totalRealMilliseconds / 3600000); // 3600000 milliseconds in an hour
-        realMinutes = Math.floor((totalRealSeconds % 3600000) / 60000); // leftover after dividing by hours, divided by milliseconds in a minute
-        realSeconds = Math.floor((totalRealSeconds % 60000) / 1000); // leftover after dividing by minutes, divided by milliseconds in a second
-        realMilliseconds = Math.floor(totalRealSeconds % 1000); // leftover milliseconds after dividing by seconds
+        realMinutes = Math.floor((totalRealMilliseconds % 3600000) / 60000); // leftover after dividing by hours, divided by milliseconds in a minute
+        realSeconds = Math.floor((totalRealMilliseconds % 60000) / 1000); // leftover after dividing by minutes, divided by milliseconds in a second
+        realMilliseconds = Math.floor(totalRealMilliseconds % 1000); // leftover milliseconds after dividing by seconds
     }
 
     // format the result as `hh:mm:ss.sssS`. There will be 2 digits for each number, 3 for milliseconds, but as a duration time string it is possible for hours to have more than 2 digits.

@@ -1,4 +1,5 @@
 import { parseSettings } from "./utils.js";
+import { rotateTimer } from "./timers/rotate.js"
 
 // Create timers
 $(".make-timer").each(function () {
@@ -21,8 +22,5 @@ $(".make-timer").each(function () {
     // TODO: create timer object
     //$this.data("timer", new timer_type[args.type[0]](display, args, list));
 
-    console.log("args:");
-    console.log(args);
-    console.log("list:");
-    console.log(list);
+    rotateTimer (display, args, list);
 });
