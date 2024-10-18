@@ -1,4 +1,5 @@
-import { TIME_PER_ERINN_DAY, argumentError, timerError,
+import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET,
+    argumentError, timerError,
     parseServerDateTime, validateTimeStrings, validateDurationTimeStrings,
     convertTimeStringToFullServerDurationTimeString, convertTimeStringToMillisecondsAfterMidnight,
     dateToMillisecondsAfterServerMidnight } from '../utils.js';
@@ -124,9 +125,9 @@ export function rotateTimer (display, args, list) {
             // handle Erinn times.
             if(erinnTimes.length > 0){
                 // how many milliseconds into the Erinn day the epoch is at
-                const startInDay = epochTime % TIME_PER_ERINN_DAY;
+                const startInDay = (epochTime + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
                 // how many milliseconds into the Erinn day the current time is at
-                const endInDay = currentTime % TIME_PER_ERINN_DAY;
+                const endInDay = (currentTime + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
                 // time since epoch in milliseconds
                 const elapsedTime = currentTime - epochTime;
                 

@@ -10,7 +10,15 @@ export const TIME_PER_ERINN_MINUTE = 1500;
 /**
  * in milliseconds
  */
-export const TIME_PER_ERINN_DAY = TIME_PER_ERINN_MINUTE*60*24;
+export const TIME_PER_ERINN_HOUR = TIME_PER_ERINN_MINUTE*60;
+/**
+ * in milliseconds
+ */
+export const TIME_PER_ERINN_DAY = TIME_PER_ERINN_HOUR*24;
+/**
+ * in milliseconds
+ */
+export const ERINN_TIME_OFFSET = TIME_PER_ERINN_HOUR*8;
 
 
 /**
