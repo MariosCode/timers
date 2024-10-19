@@ -42,6 +42,18 @@ export function rotateTimer (display, args, list) {
     let changeEvery = 'changeEvery' in args ? args.changeEvery : null;
     let changeAt = 'changeAt' in args ? args.changeAt : null;
     if(changeEvery && !validateDurationTimeStrings(changeEvery)) return argumentError('changeEvery is an invalid duration time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. For durations, the numbers accept any number of digits.');
+    // swap sunshift in changeAt with 06:00E and 18:00E
+    if(changeAt){
+        let updatedChangeAt = [];
+        changeAt.forEach((str) => {
+            // turn sunshift into 6am and 6pm erinn time
+            if (str.toLowerCase() === "sunshift") updatedChangeAt.push('06:00E','18:00E');
+            //if not sunshift, keep this string as it is
+            else updatedChangeAt.push(str);
+        });
+        //apply updated array values to the original changeAt array
+        changeAt = updatedChangeAt.slice();
+    }
     if(changeAt && !validateTimeStrings(changeAt)) return argumentError('changeAt has an invalid time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. The numbers can be 1 or 2 digits (or 3 for milliseconds) but must be a valid time.');
 
     // current rotation index (starting at 0 for the first item in the list)
