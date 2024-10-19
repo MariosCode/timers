@@ -1,236 +1,367 @@
-import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET,
-    argumentError, timerError,
-    parseServerDateTime, validateTimeStrings, validateDurationTimeStrings,
-    convertTimeStringToFullServerDurationTimeString, convertTimeStringToMillisecondsAfterMidnight,
-    dateToMillisecondsAfterServerMidnight } from '../utils.js';
+import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
+    argumentError, timerError, // Error logging
+    parseServerDateTime, validateTimeStrings, validateDurationTimeStrings, // Parsing and validation
+    convertTimeStringToFullServerDurationTimeString, convertTimeStringToMillisecondsAfterMidnight, // Conversions
+    dateToMillisecondsAfterServerMidnight
+ } from '../utils.js';
 
-/**
- * The rotate timer will go through the param list in order. The following settings are expected in args:
+ /**
+  * @typedef {Object} Epoch
+  * @property {number} year - Year from the Server date and time string
+  * @property {number} month - Month from the Server date and time string
+  * @property {number} day - Day from the Server date and time string
+  * @property {number} hour - Hour from the Server date and time string
+  * @property {number} minute - Minute from the Server date and time string
+  * @property {number} second - Second from the Server date and time string
+  * @property {number} millisecond - Millisecond from the Server date and time string
+  * @property {Date} dateObject - Date object from the Server date and time string using the Server's time zone with {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat|Intl.DateTimeFormat}
+  */
+
+ /**
+  * @typedef {Object} Duration
+  * @property {string} timestring - Duration formatted as a full Server time string
+  * @property {number} milliseconds - Duration as milliseconds
+  */
+
+/**  
+ * @class RotateTimer
+ * @classdesc Rotate type Timer. 
+ * This class should be instantiated using {@link RotateTimer.createInstance}.
  * 
- * epoch: a time the rotation started at index 0. For example: "2016-01-31T00:00:00.000S". The S means server time (as opposed to Erinn time). An epoch should be in server time.
+ * The rotate timer will go through the given list in order.
  * 
- * changeAt: a value or multiple values. Each value is the time to rotate the timer to the next item in the list. For example {6:00E}{8:00E}{12:00E}, or {6:00S}{8:00:00.000S}, or 6:00:00S. Can also be "sunshift".
+ * Rotate type timers must have a ul and/or an ol element, with at least 1 li element. This is the list the timer will rotate through.
  * 
- * changeEvery: an interval for how often to rotate. For example 6:00S (every 6 server time hours), or 6:00:00.000S (still every 6 server time hours), or 2:00E (every 2 Erinn time hours)
+ * The following settings are required in an element with the class "settings":
  * 
- * @param {object} display
- * @param {object.<string, string[]>} args - an object with the key=value pairs from the settings of the timer in the HTML. key is a string, value is an array of strings.
- * @param {string[]} list - an array of strings with the contents of each li HTML element in any ol/ul HTML element in the timer.
- * @returns
+ * - epoch: A time the rotation started at the first item in the provided list. For example: "2016-01-31T00:00:00.000S". Must be in Server time and include the date.
+ *   - For changeAt rotate timers, the epoch can be any time the rotation was at the first item in the list. For changeEvery rotate timers, the epoch should be the exact time the rotation was at the beginning of first item in the list.
+ * 
+ * And one of the following:
+ * 
+ * - changeAt: A value or multiple values. Each value is the time to rotate the timer to the next item in the list. For example "{6:00E}{8:00E}{12:00E}", or "{6:00S}{8:00:00.000S}", or "6:00:00S". Can also be "sunshift".
+ * - changeEvery: A single value for how often to rotate. For example "6:00S" or "6:00:00.000S" (every 6 Server time hours), or "2:00E" (every 2 Erinn time hours).
+ * 
+ * Optionally in settings, a rotate timer may have the following:
+ * 
+ * - label: A label to display for the timer. For example "{Today is}" or "Rua".
+ *   - labelLink: Only valid if label is defined. Adds a link to the label.
+ * - display: The display type for this timer. Defaults to {@link Display.List|List}. See {@link Display} class.
+ *   - show: Only valid if display is {@link Display.List|List}. How many list items to display. Defaults to 2.
+ * - filter: A filter to apply to the timer's output. Valid filters are:
+ *   - compress: Compresses the entries such that it only displays unique ones and adjusts timing accordingly.
  */
-export function rotateTimer (display, args, list) {
-    // make sure the required arguments are present and in the correct amounts
-	if(!('epoch' in args)) return argumentError('Rotate type requires an epoch.');
-	else if(args.epoch.length > 1) return argumentError('Rotate type requires one epoch, not multiple.');
-	if(!('changeAt' in args) && !('changeEvery' in args)) {
-		return argumentError('Rotate type requires either changeAt or changeEvery.');
-	} else if('changeAt' in args && 'changeEvery' in args) {
-		return argumentError('Rotate type cannot take both changeAt and changeEvery.');
-	} else if('changeEvery' in args && args.changeEvery.length > 1) {
-		return argumentError('Rotate type can only have one changeEvery.');
-	}
-    if(list.length < 1) return argumentError('Rotate type must have at least 1 item in its list.');
+export class RotateTimer{
+    // Prevent the use of the constructor so this class can only be created with RotateTimer.createInstance
+    static _allowConstructor = false;
 
-    // a time the rotation started at index 0 (converted to ms). or false if time provided could not be parsed, giving an error below.
-    // for changeAt rotation timers, the epoch does not need to be exact and can be any server time during which the rotation was at index 0.
-    const epoch = parseServerDateTime(args.epoch[0]);
+   /**  
+     * Private constructor to prevent direct instantiation.  
+     * Use {@link RotateTimer.createInstance} to create an instance.  
+     *   
+     * @param {Object} obj - Object containing all parameters
+     * @param {Display} obj.display - The {@link Display} for this timer to use
+     * @param {Object.<string, string[]>} obj.args - The args object created from the element with the "settings" class
+     * @param {string[]} obj.list - List created from all li elements in a ul or ol element
+     * @param {Epoch} obj.epoch - Object containing the parsed epoch Date from the epoch provided in args
+     * @param {string[]} obj.changeAt - Parsed args.changeAt times
+     * @param {Number[]} obj.erinnTimes - The Erinn times from args.changeAt sorted and stored as milliseconds after Erinn midnight
+     * @param {Number[]} obj.serverTimes - The Server times from args.changeAt sorted and stored as milliseconds after Server midnight
+     * @param {Duration} obj.changeEveryDuration - Object containing the full Server time string and milliseconds for the duration given in args.changeEvery
+     * @param {Number} obj.rotation - Number of rotations that have passed
+     * @param {string} obj.currentSelection - Currently active item in the list at the current rotation
+     * @param {Number} obj.timeout - Timeout ID for the next execution of updateRotation so it can be canceled
+     * @private  
+     */  
+    constructor({display, args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, currentSelection, timeout}){
+        if(!RotateTimer._allowConstructor) return timerError(`Rotate timers must be instantiated with RotateTimer.createInstance() instead of new RotateTimer()`);
+        RotateTimer._allowConstructor = false;
+        // Original parameters
+        this.display = display;
+        this.args = args;
+        this.list = list;
 
-    // make sure the epoch provided was a valid server time string
-    if(!epoch) return argumentError('Rotate type requires a valid Server time epoch. Valid formats are yyyy-mm-ddThh:mm:ss.sssS or yyyy-mm-ddThh:mm:ssS or yyyy-mm-ddThh:mmS with the capital T and S being the literal letters. This should be in the server time zone.');
+        // Modified parameter values
+        this.epoch = epoch;
+        this.changeAt = changeAt;
 
-    //next up, assign and validate changeEvery/changeAt times.
-    let changeEvery = 'changeEvery' in args ? args.changeEvery : null;
-    let changeAt = 'changeAt' in args ? args.changeAt : null;
-    if(changeEvery && !validateDurationTimeStrings(changeEvery)) return argumentError('changeEvery is an invalid duration time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. For durations, the numbers accept any number of digits.');
-    // swap sunshift in changeAt with 06:00E and 18:00E
-    if(changeAt){
-        let updatedChangeAt = [];
-        changeAt.forEach((str) => {
-            // turn sunshift into 6am and 6pm erinn time
-            if (str.toLowerCase() === "sunshift") updatedChangeAt.push('06:00E','18:00E');
-            //if not sunshift, keep this string as it is
-            else updatedChangeAt.push(str);
-        });
-        //apply updated array values to the original changeAt array
-        changeAt = updatedChangeAt.slice();
+        // New properties
+        this.erinnTimes = erinnTimes;
+        this.serverTimes = serverTimes;
+        this.changeEveryDuration = changeEveryDuration;
+        this.rotation = rotation;
+        this.currentSelection = currentSelection;
+        this.timeout = timeout;
+        
+        /**
+         * Updates the rotation and display for rotate timers then sets a timeout to call itself again at the next scheduled rotation time.
+         */
+        this.updateRotation = ('changeEvery' in args ? this.#updateRotationChangeEvery.bind(this) : this.#updateRotationChangeAt.bind(this));
+        this.updateRotation();
     }
-    if(changeAt && !validateTimeStrings(changeAt)) return argumentError('changeAt has an invalid time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. The numbers can be 1 or 2 digits (or 3 for milliseconds) but must be a valid time.');
 
-    // current rotation index (starting at 0 for the first item in the list)
-    let rotation = 0;
-    //set up the timeout variable here so that it can be accessed elsewhere in case it needs to be canceled.
-    let updateTimeout = null;
-    //keep track of the last rotation value so we know when the rotation actually changed (due to timeout's timing not always being exact, rotation may not actually change after updateRotation is run)
-    let lastRotation = 0;
-    //declare the updateRotation function, which will get defined below
-    let updateRotation;
+    /**  
+     * Creates an instance of RotateTimer if all parameters pass validation. Prints an error to console and returns null otherwise.
+     *   
+     * @param {Display} display - The {@link Display} for this timer to use
+     * @param {Object.<string, string[]>} args - The args object created from the element with the "settings" class
+     * @param {string[]} list - List created from all li elements in a ul or ol element
+     * @returns {RotateTimer|null} - Returns an instance of RotateTimer if the parameters are valid, otherwise returns null
+     *   
+     * @example  
+     *   $(".make-timer").each(function () {
+     *       const $this = $(this);
+     *       const args = parseSettings($this.children(".settings").html());
+     *       // Extract list
+     *       const list = [];
+     *       $this.children("ul, ol").children("li").each(function () {
+     *           list.push($(this).html().trim());
+     *       });
+     *       // Empty the list and change the class
+     *       $this.empty().removeClass("make-timer").addClass("timer");
+     *       //assign the display
+     *       let display = new display_type[args.display ? args.display[0] : "list"]($this, args);
+     *       // Create the timer
+     *       $this.data("timer", RotateTimer.createInstance(null, args, list));
+     *   });
+     */
+    static createInstance(display, args, list) {
+        // Validate and convert the given parameters into the values used by this class.
+        let validatedParameters = this.#validateParameters({display, args, list});
+        if(!validatedParameters) return null;
 
-    // changeEvery type of rotation timer
-    if(changeEvery){
-        //convert to real time duration. This will turn erinn time strings or shorthand server time strings like 5:0s into
-        //full server time strings like 05:00:00.000S and the number of real milliseconds.
-        let durationObject = convertTimeStringToFullServerDurationTimeString(changeEvery[0]);
-        // durationObject should not be false since we validated the time string above, but just in case
-        if(!durationObject) return timerError(`Rotate timer failed to complete convertTimeStringToFullServerDurationTimeString with a changeEvery value of ${changeEvery[0]}`);
+        let epoch = validatedParameters.epoch;
+        let changeAt = validatedParameters.updatedChangeAt;
+        let erinnTimes = validatedParameters.erinnTimes;
+        let serverTimes = validatedParameters.serverTimes;
+        let changeEveryDuration = validatedParameters.changeEveryDuration;
+        // Current rotation index
+        let rotation = 0;
+        // The currently active item in the list
+        let currentSelection = list[0];
+        // Timeout variable (used to cancel it if needed)
+        let timeout = null;
+        
+        // Create and return the rotate timer instance
+        RotateTimer._allowConstructor = true;
+        return new RotateTimer({display, args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, currentSelection, timeout});
+    }
 
-        // for changeEvery type rotation timers, durationObject's milliseconds must be greater than or equal to 1
-        if(durationObject.milliseconds < 1) return argumentError(`Rotate timers with a changeEvery can not have a duration of 0ms.`);
+    /**  
+     * Validates and parses the parameters given to createInstance, returning properties needed by the RotateTimer
+     *   
+     * @param {Object} obj - Object containing all parameters
+     * @param {Display} obj.display - The {@link Display} for this timer to use
+     * @param {Object.<string, string[]>} obj.args - The args object created from the element with the "settings" class
+     * @param {string[]} obj.list - List created from all li elements in a ul or ol element
+     * @returns {{epoch: Epoch, updatedChangeAt: string[], erinnTimes: string[], serverTimes: string[], changeEveryDuration: Duration}|null} - Returns an instance of RotateTimer if the parameters are valid, otherwise returns null
+     * @private  
+     */  
+    static #validateParameters({display, args, list}){
+        // Basic validations
+        //================================================================================================================================================
+        // Validate epoch
+        if(!('epoch' in args)) return argumentError('Rotate type timers require an epoch.');
+        else if(args.epoch.length > 1) return argumentError('Rotate type timers require one epoch, not multiple.');
+        // A time the rotation started at index 0 (converted to ms) or false if the time provided could not be parsed
+        // For changeAt rotation timers, the epoch can be any Server time during which the rotation was at index 0.
+        let epoch = parseServerDateTime(args.epoch[0]);
+        if(!epoch) return argumentError('Rotate type timers requires a valid Server time epoch. Valid formats are yyyy-mm-ddThh:mm:ss.sssS or yyyy-mm-ddThh:mm:ssS or yyyy-mm-ddThh:mmS with the capital T and S being the literal letters. This should be in the server time zone.');
 
-        // now set up an interval.
-        // Use setTimeout instead of setInterval. Keep in mind browsers throttle javascript timers when the tab is not active, so
-        // more time than expected may have passed.
-        updateRotation = function(){
-            //recalculate what the rotation should be at now
-            rotation = Math.floor((Date.now() - epoch.dateObject.getTime()) / durationObject.milliseconds);
+        // Validate list
+        if(list.length < 1) return argumentError('Rotate type timers must have at least 1 item in its list.');
 
-            //if rotation changed, update the display
-            if(lastRotation !== rotation){
-                lastRotation = rotation;
-                //use the rotation to get the corresponding item from the list
-                let currentSelection = list[rotation%list.length];
-                //TODO: implement displays. for now, just use the console.
-                console.log(`rotation timer update: ${currentSelection}`);
-            }
-
-            // in case the timeout did not execute at the scheduled time, calculate how long to wait for the next scheduled time.
-            // waitTime will be the duration between rotations, minus the amount of time that passed since the last rotation change.
-            let waitTime = durationObject.milliseconds - ((Date.now() - epoch.dateObject.getTime()) % durationObject.milliseconds);
-            // just in case a timeout was started elsewhere, clear it before starting a new one.
-            clearTimeout(updateTimeout);
-            //call this function again at the scheduled time.
-            updateTimeout = setTimeout(updateRotation, waitTime);
+        // Validate changeAt/changeEvery
+        if(!('changeAt' in args) && !('changeEvery' in args)) {
+            return argumentError('Rotate type timers require either changeAt or changeEvery.');
+        } else if('changeAt' in args && 'changeEvery' in args) {
+            return argumentError('Rotate type timers cannot take both changeAt and changeEvery.');
+        } else if('changeEvery' in args && args.changeEvery.length > 1) {
+            return argumentError('Rotate type timers can only have one changeEvery.');
         }
-    // changeAt type of rotation timer
-    }else if(changeAt){
-        // changeAt times need to be converted to milliseconds from midnight so I can work with them with Date.now()
-        // Also it is possible for changeAt to have both types of times, They need to be separated.
-        // return an error afterwards if any changeAt time fails to convert to milliseconds.
-        let errorValue = false;
+
+        // Assign changeEvery/changeAt time
+        let changeEvery = 'changeEvery' in args ? args.changeEvery.slice() : null;
+        let changeAt = 'changeAt' in args ? args.changeAt.slice() : null;
+        
+        // changeAt validation
+        //================================================================================================================================================
+        let updatedChangeAt = [];
         let erinnTimes = [];
         let serverTimes = [];
+        if(changeAt){
+            changeAt.forEach((str) => {
+                // Swap sunshift in changeAt with 06:00E and 18:00E
+                if (str.toLowerCase() === "sunshift") updatedChangeAt.push('06:00E','18:00E');
+                // If not sunshift, keep this string as it is
+                else updatedChangeAt.push(str);
+            });
 
-        changeAt.forEach(str => {
-            //convert the time string to an object with a type (Erinn or Server) and a milliseconds after midnight
-            let convertedTimeString = convertTimeStringToMillisecondsAfterMidnight(str);
-            // if the conversion to milliseconds failed, set the errorValue. Otherwise, sort the time into the correct array.
-            if(!convertedTimeString){
-                errorValue = str;
-            }else{
-                convertedTimeString.type === "Erinn" ? erinnTimes.push(convertedTimeString.milliseconds) : serverTimes.push(convertedTimeString.milliseconds);
+            if(!validateTimeStrings(updatedChangeAt)) return argumentError('In a rotate type timer, changeAt has an invalid time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. The numbers can be 1 or 2 digits (or 3 for milliseconds) but must be a valid time.');
+
+            // Separate and sort changeAt
+            let errorValue = false;
+
+            updatedChangeAt.forEach(str => {
+                // Convert the time string to an object with properties "type" (Erinn or Server) and "milliseconds" after midnight
+                let convertedTimeString = convertTimeStringToMillisecondsAfterMidnight(str);
+                // If the conversion to milliseconds failed, set the errorValue. Otherwise, sort the milliseconds after midnight into the correct array.
+                if(!convertedTimeString){
+                    errorValue = str;
+                }else{
+                    convertedTimeString.type === "Erinn" ? erinnTimes.push(convertedTimeString.milliseconds) : serverTimes.push(convertedTimeString.milliseconds);
+                }
+            });
+            if(errorValue !== false){ // Specifically a boolean check. We don't want things like empty strings to be considered false here.
+                return timerError(`Rotate timer failed to complete convertTimeStringToMillisecondsAfterMidnight at a changeAt value of ${errorValue}`);
             }
-        });
-        if(errorValue !== false){ // specifically a boolean check. I don't want things like empty strings to be considered false here.
-            return timerError(`Rotate timer failed to complete convertTimeStringToMillisecondsAfterMidnight at a changeAt value of ${errorValue}`)
+            // Sort the arrays from earliest time to latest
+            erinnTimes.sort((a,b) => a - b);
+            serverTimes.sort((a,b) => a - b);
         }
-        //sort the arrays from earliest time to latest
-        erinnTimes.sort((a,b) => a - b);
-        serverTimes.sort((a,b) => a - b);
-
-        updateRotation = function(){
-            // reset rotation to rcalculate it from scratch.
-            rotation = 0;
-            let currentTime = Date.now();
-            let epochTime = epoch.dateObject;
-            // keep track of which serverTime or erinnTime comes next to determine the next timeout's wait time
-            let waitTime = Infinity;
-            
-            // handle Erinn times.
-            if(erinnTimes.length > 0){
-                // how many milliseconds into the Erinn day the epoch is at
-                const startInDay = (epochTime + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
-                // how many milliseconds into the Erinn day the current time is at
-                const endInDay = (currentTime + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
-                // time since epoch in milliseconds
-                const elapsedTime = currentTime - epochTime;
-                
-                // if startInDay and endInDay are on the same day, just add the rotations between them.
-                if(endInDay - startInDay === elapsedTime){
-                    rotation += erinnTimes.filter(rotationTime => rotationTime > startInDay && rotationTime <= endInDay).length;
-                // if startInDay and endInDay have no full days in between, then just add the rotations from those two partial days.
-                }else if( (TIME_PER_ERINN_DAY - startInDay) + endInDay === elapsedTime){
-                    // first partial day
-                    rotation += erinnTimes.filter(rotationTime => rotationTime > startInDay).length;
-                    // second partial day
-                    rotation += erinnTimes.filter(rotationTime => rotationTime <= endInDay).length;
-                //there are full days in between. Add the rotations from the two partial days and all the full days between them
-                }else{
-                    // first partial day
-                    rotation += erinnTimes.filter(rotationTime => rotationTime > startInDay).length;
-                    // second partial day
-                    rotation += erinnTimes.filter(rotationTime => rotationTime <= endInDay).length;
-                    // the days between
-                    let daysBetween = (elapsedTime - (TIME_PER_ERINN_DAY-startInDay) - endInDay)/TIME_PER_ERINN_DAY;
-                    rotation += erinnTimes.length * daysBetween;
-                }
-                //done. Now for waitTime, get the next scheduled erinnTime. minimum wait time is 1ms.
-                let nextScheduledTime = erinnTimes.find(rotationTime => rotationTime > endInDay);
-                if(typeof nextScheduledTime === 'undefined'){
-                    //no more times in the current day. Get the first time instead and add the remainder time in the current day
-                    nextScheduledTime = erinnTimes[0] + TIME_PER_ERINN_DAY - endInDay;
-                }else{
-                    //found the next time later in the day. Adjust it for milliseconds from now
-                    nextScheduledTime -= endInDay;
-                }
-                //keep current waitTime if it is shorter, make it 1 if it is shorter than 1.
-                waitTime = Math.max(Math.min(waitTime, nextScheduledTime), 1);
-            }
-
-            //handle server times
-            if(serverTimes.length > 0){
-                // how many milliseconds into the Server day the epoch is at
-                const startInDay = dateToMillisecondsAfterServerMidnight(epochTime);
-                // how many milliseconds into the Server day the current time is at
-                const endInDay = dateToMillisecondsAfterServerMidnight(currentTime);
-                // time since epoch in milliseconds
-                const elapsedTime = currentTime - epochTime;
-                
-                // if startInDay and endInDay are on the same day, just add the rotations between them.
-                if(endInDay - startInDay === elapsedTime){
-                    rotation += serverTimes.filter(rotationTime => rotationTime > startInDay && rotationTime <= endInDay).length;
-                // if startInDay and endInDay have no full days in between, then just add the rotations from those two partial days.
-                }else if( (86400000 - startInDay) + endInDay === elapsedTime){
-                    // first partial day
-                    rotation += serverTimes.filter(rotationTime => rotationTime > startInDay).length;
-                    // second partial day
-                    rotation += serverTimes.filter(rotationTime => rotationTime <= endInDay).length;
-                //there are full days in between. Add the rotations from the two partial days and all the full days between them
-                }else{
-                    // first partial day
-                    rotation += serverTimes.filter(rotationTime => rotationTime > startInDay).length;
-                    // second partial day
-                    rotation += serverTimes.filter(rotationTime => rotationTime <= endInDay).length;
-                    // the days between
-                    let daysBetween = (elapsedTime - (86400000-startInDay) - endInDay)/86400000;
-                    rotation += serverTimes.length * daysBetween;
-                }
-
-                //done. Now for waitTime, get the next scheduled serverTime. minimum wait time is 1ms.
-                let nextScheduledTime = serverTimes.find(rotationTime => rotationTime > endInDay);
-                if(typeof nextScheduledTime === 'undefined'){
-                    //no more times in the current day. Get the first time instead and add the remainder time in the current day
-                    nextScheduledTime = serverTimes[0] + 86400000 - endInDay;
-                }else{
-                    //found the next time later in the day. Adjust it for milliseconds from now
-                    nextScheduledTime -= endInDay;
-                }
-                //keep current waitTime if it is shorter, make it 1 if it is shorter than 1.
-                waitTime = Math.max(Math.min(waitTime, nextScheduledTime), 1);
-            }
-
-            //if rotation changed, update the display
-            if(lastRotation !== rotation){
-                lastRotation = rotation;
-                //use the rotation to get the corresponding item from the list
-                let currentSelection = list[rotation%list.length];
-                //TODO: implement displays. for now, just use the console.
-                console.log(`rotation timer update: ${currentSelection}`);
-            }
-            // just in case a timeout was started elsewhere, clear it before starting a new one.
-            clearTimeout(updateTimeout);
-            //call this function again at the scheduled time.
-            updateTimeout = setTimeout(updateRotation, waitTime);
+        
+        // changeEvery validation
+        //================================================================================================================================================
+        let changeEveryDuration = null;
+        if(changeEvery){
+            if(!validateDurationTimeStrings(changeEvery)) return argumentError('In a rotate type timer, changeEvery is an invalid duration time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. For durations, the numbers accept any number of digits.');
+            // Convert to real time duration as a full Server time string like 05:00:00.000S and the number of real milliseconds.
+            changeEveryDuration = convertTimeStringToFullServerDurationTimeString(changeEvery[0]);
+            if(!changeEveryDuration) return timerError(`Rotate timer failed to complete convertTimeStringToFullServerDurationTimeString. changeEvery value: ${changeEvery[0]}`);
+            if(changeEveryDuration.milliseconds < 1) return argumentError(`Rotate timers with a changeEvery can not have a duration of 0ms or below. changeEvery value: ${changeEvery[0]}`);
         }
+
+        return {epoch, updatedChangeAt, erinnTimes, serverTimes, changeEveryDuration};
     }
-    //start the timer
-    updateRotation();
+
+    /**  
+     * Updates the rotation and display for rotate timers with a changeEvery then sets a timeout to call itself again at the next scheduled rotation time.
+     *   
+     * @private  
+     */  
+    #updateRotationChangeEvery(){
+        // Use setTimeout instead of setInterval. Keep in mind browsers throttle javascript timers when the tab is not active. Timing is not exact and needs to be manually adjusted each time.
+        // Recalculate what the rotation should be at now
+        let lastRotation = this.rotation;
+        this.rotation = Math.floor((Date.now() - this.epoch.dateObject.getTime()) / this.changeEveryDuration.milliseconds);
+
+        // If rotation changed, update the display
+        if(lastRotation !== this.rotation){
+            lastRotation = this.rotation;
+            // Use the rotation to get the corresponding item from the list
+            this.currentSelection = this.list[ this.rotation % this.list.length ];
+            // TODO: implement displays. for now, just use the console.
+            console.log(`rotation timer update: ${this.currentSelection}`);
+        }
+
+        // Calculate how long to wait for the next scheduled time
+        // waitTime will be the duration between rotations, minus the amount of time that passed since the last rotation change.
+        let waitTime = this.changeEveryDuration.milliseconds - ((Date.now() - this.epoch.dateObject.getTime()) % this.changeEveryDuration.milliseconds);
+
+        // Just in case a timeout was started elsewhere, clear it before starting a new one.
+        clearTimeout(this.timeout);
+        this.timeout = setTimeout(this.updateRotation, waitTime);
+    }
+        
+    /**  
+     * Updates the rotation and display for rotate timers with a changeAt then sets a timeout to call itself again at the next scheduled rotation time.
+     *   
+     * @private  
+     */ 
+    #updateRotationChangeAt(){
+        // Reset rotation to recalculate it from scratch
+        let lastRotation = this.rotation;
+        this.rotation = 0;
+        let currentTime = Date.now();
+        let epochTime = this.epoch.dateObject;
+        // Time in milliseconds until the next rotation
+        let waitTime = Infinity;
+        
+        // Erinn times
+        //================================================================================================================================================
+        if(this.erinnTimes.length > 0){
+            // How many milliseconds into the Erinn day the epoch is at
+            const startInDay = (epochTime + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
+            // How many milliseconds into the Erinn day the current time is at
+            const endInDay = (currentTime + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
+            // Time since epoch in milliseconds
+            const elapsedTime = currentTime - epochTime;
+            
+            // If startInDay and endInDay are on the same day, just add the rotations between them.
+            if(endInDay - startInDay === elapsedTime){
+                this.rotation += this.erinnTimes.filter(rotationTime => rotationTime > startInDay && rotationTime <= endInDay).length;
+            // If startInDay and endInDay have no full days in between, then just add the rotations from those two partial days.
+            }else if( (TIME_PER_ERINN_DAY - startInDay) + endInDay === elapsedTime){
+                this.rotation += this.erinnTimes.filter(rotationTime => rotationTime > startInDay).length;
+                this.rotation += this.erinnTimes.filter(rotationTime => rotationTime <= endInDay).length;
+            // There are full days in between. Add the rotations from the two partial days and all the full days between them.
+            }else{
+                this.rotation += this.erinnTimes.filter(rotationTime => rotationTime > startInDay).length;
+                this.rotation += this.erinnTimes.filter(rotationTime => rotationTime <= endInDay).length;
+                let daysBetween = (elapsedTime - (TIME_PER_ERINN_DAY-startInDay) - endInDay)/TIME_PER_ERINN_DAY;
+                this.rotation += this.erinnTimes.length * daysBetween;
+            }
+            // Get the next scheduled erinnTime and update waitTime. Minimum waitTime is 1ms.
+            let nextScheduledTime = this.erinnTimes.find(rotationTime => rotationTime > endInDay);
+            if(typeof nextScheduledTime !== 'undefined'){
+                // Next rotation is today. Adjust it for milliseconds from now.
+                nextScheduledTime -= endInDay;
+            }else{
+                // Next rotation is tomorrow. Get the first time tomorrow and add the remainder time from today.
+                nextScheduledTime = this.erinnTimes[0] + TIME_PER_ERINN_DAY - endInDay;
+            }
+            // Keep current waitTime if it is shorter. Make it 1ms if it is shorter than 1ms.
+            waitTime = Math.max(Math.min(waitTime, nextScheduledTime), 1);
+        }
+
+        // Server times
+        //================================================================================================================================================
+        if(this.serverTimes.length > 0){
+            // How many milliseconds into the Server day the epoch is at
+            const startInDay = dateToMillisecondsAfterServerMidnight(epochTime);
+            // How many milliseconds into the Server day the current time is at
+            const endInDay = dateToMillisecondsAfterServerMidnight(currentTime);
+            // Time since epoch in milliseconds
+            const elapsedTime = currentTime - epochTime;
+            
+            // If startInDay and endInDay are on the same day, add the rotations between them.
+            if(endInDay - startInDay === elapsedTime){
+                this.rotation += this.serverTimes.filter(rotationTime => rotationTime > startInDay && rotationTime <= endInDay).length;
+            // If startInDay and endInDay have no full days in between, add the rotations from those two partial days.
+            }else if( (86400000 - startInDay) + endInDay === elapsedTime){
+                this.rotation += this.serverTimes.filter(rotationTime => rotationTime > startInDay).length;
+                this.rotation += this.serverTimes.filter(rotationTime => rotationTime <= endInDay).length;
+            // There are full days in between. Add the rotations from the two partial days and all the full days between them.
+            }else{
+                this.rotation += this.serverTimes.filter(rotationTime => rotationTime > startInDay).length;
+                this.rotation += this.serverTimes.filter(rotationTime => rotationTime <= endInDay).length;
+                let daysBetween = (elapsedTime - (86400000-startInDay) - endInDay)/86400000;
+                this.rotation += this.serverTimes.length * daysBetween;
+            }
+
+            // Get the next scheduled serverTime and update waitTime. Minimum waitTime is 1ms.
+            let nextScheduledTime = this.serverTimes.find(rotationTime => rotationTime > endInDay);
+            if(typeof nextScheduledTime !== 'undefined'){
+                // Next rotation is today. Adjust it for milliseconds from now.
+                nextScheduledTime -= endInDay;
+            }else{
+                // Next rotation is tomorrow. Get the first time tomorrow and add the remainder time from today.
+                nextScheduledTime = this.serverTimes[0] + 86400000 - endInDay;
+            }
+            // Keep current waitTime if it is shorter. Make it 1ms if it is shorter than 1ms.
+            waitTime = Math.max(Math.min(waitTime, nextScheduledTime), 1);
+        }
+
+        // If rotation changed, update the display
+        if(lastRotation !== this.rotation){
+            lastRotation = this.rotation;
+            // Use the rotation to get the corresponding item from the list
+            let currentSelection = this.list[ this.rotation % this.list.length ];
+            // TODO: implement displays. For now, just use the console.
+            console.log(`rotate timer update: ${currentSelection}`);
+        }
+        // Just in case a timeout was started elsewhere, clear it before starting a new one.
+        clearTimeout(this.timeout);
+        this.timeout = setTimeout(this.updateRotation, waitTime);
+    }
 }

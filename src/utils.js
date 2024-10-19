@@ -32,6 +32,7 @@ export const ERINN_TIME_OFFSET = TIME_PER_ERINN_HOUR*8;
  */
 export function argumentError(warning) {
 	console.warn(`Argument Error: ${warning}`);
+    return null;
 }
 
 
@@ -46,6 +47,7 @@ export function argumentError(warning) {
  */
 export function timerError(warning) {
 	console.warn(`Timer Error: ${warning}`);
+    return null;
 }
 
 /**
