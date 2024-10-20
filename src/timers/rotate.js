@@ -251,7 +251,7 @@ export class RotateTimer{
             // Use the rotation to get the corresponding item from the list
             this.currentSelection = this.list[ this.rotation % this.list.length ];
             // TODO: implement displays. for now, just use the console.
-            console.log(`rotation timer update: ${this.currentSelection}`);
+            console.log(`rotate timer changeEvery update: ${this.currentSelection}`);
         }
 
         // Calculate how long to wait for the next scheduled time
@@ -281,11 +281,11 @@ export class RotateTimer{
         //================================================================================================================================================
         if(this.erinnTimes.length > 0){
             // How many milliseconds into the Erinn day the epoch is at
-            const startInDay = (epochTime + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
+            const startInDay = (epochTime.getTime() + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
             // How many milliseconds into the Erinn day the current time is at
             const endInDay = (currentTime + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
             // Time since epoch in milliseconds
-            const elapsedTime = currentTime - epochTime;
+            const elapsedTime = currentTime - epochTime.getTime();
             
             // If startInDay and endInDay are on the same day, just add the rotations between them.
             if(endInDay - startInDay === elapsedTime){
@@ -322,7 +322,7 @@ export class RotateTimer{
             // How many milliseconds into the Server day the current time is at
             const endInDay = dateToMillisecondsAfterServerMidnight(currentTime);
             // Time since epoch in milliseconds
-            const elapsedTime = currentTime - epochTime;
+            const elapsedTime = currentTime - epochTime.getTime();
             
             // If startInDay and endInDay are on the same day, add the rotations between them.
             if(endInDay - startInDay === elapsedTime){
@@ -358,7 +358,7 @@ export class RotateTimer{
             // Use the rotation to get the corresponding item from the list
             let currentSelection = this.list[ this.rotation % this.list.length ];
             // TODO: implement displays. For now, just use the console.
-            console.log(`rotate timer update: ${currentSelection}`);
+            console.log(`rotate timer changeAt update: ${currentSelection}`);
         }
         // Just in case a timeout was started elsewhere, clear it before starting a new one.
         clearTimeout(this.timeout);
