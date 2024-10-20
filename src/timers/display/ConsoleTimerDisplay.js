@@ -1,4 +1,4 @@
-import { TimerDisplay } from "./TimerDisplay";
+import { TimerDisplay } from "./TimerDisplay.js";
 
 
 export class ConsoleTimerDisplay extends TimerDisplay{

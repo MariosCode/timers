@@ -23,5 +23,5 @@ $(".make-timer").each(function () {
 
     // TODO: create timer object
     //$this.data("timer", new timer_type[args.type[0]](display, args, list));
-    $this.data("timer", RotateTimer.createInstance(null, args, list));
+    $this.data("timer", RotateTimer.createInstance(args, list));
 });
