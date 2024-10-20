@@ -1,5 +1,7 @@
-import { parseSettings } from "./utils.js";
-import { RotateTimer } from "./timers/rotate.js"
+import { parseSettings } from "./helper/utils.js";
+import { RotateTimer } from "./timer/RotateTimer.js"
+import { ConsoleTimerDisplay } from "./display/ConsoleTimerDisplay.js";
+import { TimerDisplay } from "./display/TimerDisplay.js";
 
 // Create timers
 $(".make-timer").each(function () {

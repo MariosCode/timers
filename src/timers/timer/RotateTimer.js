@@ -1,9 +1,11 @@
+import { TimerDisplay } from '../display/TimerDisplay.js'
+
 import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
     argumentError, timerError, // Error logging
     parseServerDateTime, validateTimeStrings, validateDurationTimeStrings, // Parsing and validation
     convertTimeStringToFullServerDurationTimeString, convertTimeStringToMillisecondsAfterMidnight, // Conversions
     dateToMillisecondsAfterServerMidnight
- } from '../utils.js';
+ } from '../helper/utils.js';
 
  /**
   * @typedef {Object} Epoch
@@ -44,12 +46,8 @@ import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
  * 
  * Optionally in settings, a rotate timer may have the following:
  * 
- * - label: A label to display for the timer. For example "{Today is}" or "Rua".
- *   - labelLink: Only valid if label is defined. Adds a link to the label.
- * - display: The display type for this timer. Defaults to {@link Display.List|List}. See {@link Display} class.
- *   - show: Only valid if display is {@link Display.List|List}. How many list items to display. Defaults to 2.
  * - filter: A filter to apply to the timer's output. Valid filters are:
- *   - compress: Compresses the entries such that it only displays unique ones and adjusts timing accordingly.
+ *   - compress: Compresses the entries such that it only outputs unique ones and adjusts timing accordingly.
  */
 export class RotateTimer{
     // Prevent the use of the constructor so this class can only be created with RotateTimer.createInstance
@@ -60,7 +58,6 @@ export class RotateTimer{
      * Use {@link RotateTimer.createInstance} to create an instance.  
      *   
      * @param {Object} obj - Object containing all parameters
-     * @param {Display} obj.display - The {@link Display} for this timer to use
      * @param {Object.<string, string[]>} obj.args - The args object created from the element with the "settings" class
      * @param {string[]} obj.list - List created from all li elements in a ul or ol element
      * @param {Epoch} obj.epoch - Object containing the parsed epoch Date from the epoch provided in args
@@ -73,11 +70,10 @@ export class RotateTimer{
      * @param {Number} obj.timeout - Timeout ID for the next execution of updateRotation so it can be canceled
      * @private  
      */  
-    constructor({display, args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, currentSelection, timeout}){
+    constructor({args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, currentSelection, timeout}){
         if(!RotateTimer._allowConstructor) return timerError(`Rotate timers must be instantiated with RotateTimer.createInstance() instead of new RotateTimer()`);
         RotateTimer._allowConstructor = false;
         // Original parameters
-        this.display = display;
         this.args = args;
         this.list = list;
 
@@ -85,25 +81,45 @@ export class RotateTimer{
         this.epoch = epoch;
         this.changeAt = changeAt;
 
-        // New properties
+        // New properties from parameters
         this.erinnTimes = erinnTimes;
         this.serverTimes = serverTimes;
         this.changeEveryDuration = changeEveryDuration;
         this.rotation = rotation;
         this.currentSelection = currentSelection;
         this.timeout = timeout;
+
+        // New properties
+        if('changeEvery' in args){
+            /**
+             * Updates the rotation and TimerDisplays for rotate timers then sets a timeout to call itself again at the next scheduled rotation time.
+             */
+            this.updateRotation = this.#updateRotationChangeEvery.bind(this);
+            this.type = "changeEvery";
+        }else{
+            /**
+             * Updates the rotation and TimerDisplays for rotate timers then sets a timeout to call itself again at the next scheduled rotation time.
+             */
+            this.updateRotation = this.#updateRotationChangeAt.bind(this);
+            this.type = "changeAt";
+        }
         
-        /**
-         * Updates the rotation and display for rotate timers then sets a timeout to call itself again at the next scheduled rotation time.
-         */
-        this.updateRotation = ('changeEvery' in args ? this.#updateRotationChangeEvery.bind(this) : this.#updateRotationChangeAt.bind(this));
+        // Start the timer TODO: run updateRotation only if a TimerDisplay is added, and stop it if a TimerDisplay is removed and remaining TimerDisplays is 0
         this.updateRotation();
+
+        /**
+         * The {@link TimerDisplay|TimerDisplays} attached to the timer.
+         */
+        this.timerDisplays = new Map();
+        /**
+         * Determines how many scheduled events to include in the timer's output. Determined by the TimerDisplays attached to the timer.
+         */
+        this.depth = 1;
     }
 
     /**  
      * Creates an instance of RotateTimer if all parameters pass validation. Prints an error to console and returns null otherwise.
      *   
-     * @param {Display} display - The {@link Display} for this timer to use
      * @param {Object.<string, string[]>} args - The args object created from the element with the "settings" class
      * @param {string[]} list - List created from all li elements in a ul or ol element
      * @returns {RotateTimer|null} - Returns an instance of RotateTimer if the parameters are valid, otherwise returns null
@@ -119,15 +135,15 @@ export class RotateTimer{
      *       });
      *       // Empty the list and change the class
      *       $this.empty().removeClass("make-timer").addClass("timer");
-     *       //assign the display
-     *       let display = new display_type[args.display ? args.display[0] : "list"]($this, args);
+     *       //assign the TimerDisplay
+     *       let TimerDisplay = new TimerDisplay_type[args.timerDisplay ? args.timerDisplay[0] : "list"]($this, args);
      *       // Create the timer
      *       $this.data("timer", RotateTimer.createInstance(null, args, list));
      *   });
      */
-    static createInstance(display, args, list) {
+    static createInstance(args, list) {
         // Validate and convert the given parameters into the values used by this class.
-        let validatedParameters = this.#validateParameters({display, args, list});
+        let validatedParameters = this.#validateParameters({args, list});
         if(!validatedParameters) return null;
 
         let epoch = validatedParameters.epoch;
@@ -144,20 +160,19 @@ export class RotateTimer{
         
         // Create and return the rotate timer instance
         RotateTimer._allowConstructor = true;
-        return new RotateTimer({display, args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, currentSelection, timeout});
+        return new RotateTimer({args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, currentSelection, timeout});
     }
 
     /**  
      * Validates and parses the parameters given to createInstance, returning properties needed by the RotateTimer
      *   
      * @param {Object} obj - Object containing all parameters
-     * @param {Display} obj.display - The {@link Display} for this timer to use
      * @param {Object.<string, string[]>} obj.args - The args object created from the element with the "settings" class
      * @param {string[]} obj.list - List created from all li elements in a ul or ol element
      * @returns {{epoch: Epoch, updatedChangeAt: string[], erinnTimes: string[], serverTimes: string[], changeEveryDuration: Duration}|null} - Returns an instance of RotateTimer if the parameters are valid, otherwise returns null
      * @private  
      */  
-    static #validateParameters({display, args, list}){
+    static #validateParameters({args, list}){
         // Basic validations
         //================================================================================================================================================
         // Validate epoch
@@ -235,7 +250,7 @@ export class RotateTimer{
     }
 
     /**  
-     * Updates the rotation and display for rotate timers with a changeEvery then sets a timeout to call itself again at the next scheduled rotation time.
+     * Updates the rotation and TimerDisplays for rotate timers with a changeEvery then sets a timeout to call itself again at the next scheduled rotation time.
      *   
      * @private  
      */  
@@ -245,12 +260,12 @@ export class RotateTimer{
         let lastRotation = this.rotation;
         this.rotation = Math.floor((Date.now() - this.epoch.dateObject.getTime()) / this.changeEveryDuration.milliseconds);
 
-        // If rotation changed, update the display
+        // If rotation changed, update the TimerDisplays
         if(lastRotation !== this.rotation){
             lastRotation = this.rotation;
             // Use the rotation to get the corresponding item from the list
             this.currentSelection = this.list[ this.rotation % this.list.length ];
-            // TODO: implement displays. for now, just use the console.
+            // TODO: implement TimerDisplays. for now, just use the console.
             console.log(`rotate timer changeEvery update: ${this.currentSelection}`);
         }
 
@@ -264,7 +279,7 @@ export class RotateTimer{
     }
         
     /**  
-     * Updates the rotation and display for rotate timers with a changeAt then sets a timeout to call itself again at the next scheduled rotation time.
+     * Updates the rotation and TimerDisplays for rotate timers with a changeAt then sets a timeout to call itself again at the next scheduled rotation time.
      *   
      * @private  
      */ 
@@ -352,12 +367,12 @@ export class RotateTimer{
             waitTime = Math.max(Math.min(waitTime, nextScheduledTime), 1);
         }
 
-        // If rotation changed, update the display
+        // If rotation changed, update the TimerDisplays
         if(lastRotation !== this.rotation){
             lastRotation = this.rotation;
             // Use the rotation to get the corresponding item from the list
             let currentSelection = this.list[ this.rotation % this.list.length ];
-            // TODO: implement displays. For now, just use the console.
+            // TODO: implement TimerDisplays. For now, just use the console.
             console.log(`rotate timer changeAt update: ${currentSelection}`);
         }
         // Just in case a timeout was started elsewhere, clear it before starting a new one.
