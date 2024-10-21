@@ -1,10 +1,10 @@
 import { TimerDisplay } from '../display/TimerDisplay.js'
 
 import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
-    argumentError, timerError, // Error logging
+    argumentError, timerError, timerDisplayError, // Error logging
     parseServerDateTime, validateTimeStrings, validateDurationTimeStrings, // Parsing and validation
     convertTimeStringToFullServerDurationTimeString, convertTimeStringToMillisecondsAfterMidnight, // Conversions
-    dateToMillisecondsAfterServerMidnight
+    dateToMillisecondsAfterServerMidnight, arrayFindLast
  } from '../helper/utils.js';
 
  /**
@@ -66,11 +66,11 @@ export class RotateTimer{
      * @param {Number[]} obj.serverTimes - The Server times from args.changeAt sorted and stored as milliseconds after Server midnight
      * @param {Duration} obj.changeEveryDuration - Object containing the full Server time string and milliseconds for the duration given in args.changeEvery
      * @param {Number} obj.rotation - Number of rotations that have passed
-     * @param {string} obj.currentSelection - Currently active item in the list at the current rotation
+     * @param {Array.<[Number, Number]>} obj.rotationData - Rotation data to be given to attached displays. All array items are [list item index, start time for this list item in milliseconds since unix epoch].
      * @param {Number} obj.timeout - Timeout ID for the next execution of updateRotation so it can be canceled
      * @private  
      */  
-    constructor({args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, currentSelection, timeout}){
+    constructor({args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout}){
         if(!RotateTimer._allowConstructor) return timerError(`Rotate timers must be instantiated with RotateTimer.createInstance() instead of new RotateTimer()`);
         RotateTimer._allowConstructor = false;
         // Original parameters
@@ -86,7 +86,7 @@ export class RotateTimer{
         this.serverTimes = serverTimes;
         this.changeEveryDuration = changeEveryDuration;
         this.rotation = rotation;
-        this.currentSelection = currentSelection;
+        this.rotationData = rotationData;
         this.timeout = timeout;
 
         // New properties
@@ -103,18 +103,18 @@ export class RotateTimer{
             this.updateRotation = this.#updateRotationChangeAt.bind(this);
             this.type = "changeAt";
         }
-        
-        // Start the timer TODO: run updateRotation only if a TimerDisplay is added, and stop it if a TimerDisplay is removed and remaining TimerDisplays is 0
-        this.updateRotation();
 
         /**
          * The {@link TimerDisplay|TimerDisplays} attached to the timer.
          */
         this.timerDisplays = new Map();
         /**
-         * Determines how many scheduled events to include in the timer's output. Determined by the TimerDisplays attached to the timer.
+         * Determines how many arrays to include in rotationData. Determined by the highest depth in the TimerDisplays attached to this timer. Minimum 2.
          */
-        this.depth = 1;
+        this.depth = 2;
+
+        // TODO: remove this when console displays are implemented
+        this.updateRotation();
     }
 
     /**  
@@ -153,14 +153,62 @@ export class RotateTimer{
         let changeEveryDuration = validatedParameters.changeEveryDuration;
         // Current rotation index
         let rotation = 0;
-        // The currently active item in the list
-        let currentSelection = list[0];
+        // Data to be given to attached displays
+        let rotationData = [];
         // Timeout variable (used to cancel it if needed)
         let timeout = null;
         
         // Create and return the rotate timer instance
         RotateTimer._allowConstructor = true;
-        return new RotateTimer({args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, currentSelection, timeout});
+        return new RotateTimer({args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout});
+    }
+
+    attachDisplay(display){
+        // Validate the given TimerDisplay
+        if(!(display instanceof TimerDisplay)) return timerError("Failed to attach display due to the provided display not being an instance of TimerDisplay or its subclasses.");
+        if(this.timerDisplays.has(display)) return timerError("Failed to attach display due to the provided display already being attached.");
+
+        // Add to the timerDisplays Map
+        this.timerDisplays.set(display, true);
+
+        // Update depth if needed
+        this.depth = (this.depth > display.depth ? this.depth : display.depth);
+
+        // If this is the first TimerDisplay added to the Map, begin the rotations.
+        if(this.timerDisplays.size === 1){
+            this.updateRotation();
+        }
+
+        // Give this TimerDisplay the up to date rotation data
+        display.updateData(this.rotationData);
+    }
+
+    detachDisplay(display){
+        // Validate
+        if(!(this.timerDisplays.has(display))) return timerError("Failed to detach display due to the provided display not being attached.");
+
+        this.timerDisplays.delete(display);
+        // If this is the last TimerDisplay, stop the rotations and reset the depth.
+        if(this.timerDisplays.size === 0){
+            clearTimeout(this.timeout);
+            this.depth = 2;
+        // Otherwise, recalculate the depth if necessary.
+        }else{
+            if(display.depth === this.depth) this.recalculateDepth();
+        }
+    }
+
+    recalculateDepth(){
+        this.depth = 2;
+        this.timerDisplays.forEach((value, display) => {
+            this.depth = (this.depth > display.depth ? this.depth : display.depth);
+        });
+    }
+
+    updateAllDisplays() {
+        this.timerDisplays.forEach((value, display) => {
+            display.updateData(this.rotationData);
+        });
     }
 
     /**  
@@ -258,26 +306,34 @@ export class RotateTimer{
         // Use setTimeout instead of setInterval. Keep in mind browsers throttle javascript timers when the tab is not active. Timing is not exact and needs to be manually adjusted each time.
         // Recalculate what the rotation should be at now
         let lastRotation = this.rotation;
-        this.rotation = Math.floor((Date.now() - this.epoch.dateObject.getTime()) / this.changeEveryDuration.milliseconds);
+        let epochTime = this.epoch.dateObject.getTime();
+        let currentTime = Date.now();
+        this.rotation = Math.floor((currentTime - epochTime) / this.changeEveryDuration.milliseconds);
 
         // If rotation changed, update the TimerDisplays
         if(lastRotation !== this.rotation){
-            lastRotation = this.rotation;
-            // Use the rotation to get the corresponding item from the list
-            this.currentSelection = this.list[ this.rotation % this.list.length ];
-            // TODO: implement TimerDisplays. for now, just use the console.
-            console.log(`rotate timer changeEvery update: ${this.currentSelection}`);
+            // TODO: Implement the compression filter. Create a new array using compression and then compare it to rotationData to determine if displays need to be updated. If list value from rotation of first index of first array matches that of second array, copy the first array's first index over to second array to keep the start time of it.
+            // Clear rotationData and recalculate all entries
+            this.rotationData = [];
+            for(let i = 0; i < this.depth; i++){
+                this.rotationData.push([(this.rotation + i) % this.list.length,
+                    epochTime + ((this.rotation + i) * this.changeEveryDuration.milliseconds)]);
+            }
+            // Update all attached TimerDisplays with new rotationData
+            this.updateAllDisplays();
+            // TODO: remove this console log when console displays are implemented
+            console.log(`rotate timer changeEvery update:`);
+            console.log(this.rotationData);
         }
 
         // Calculate how long to wait for the next scheduled time
         // waitTime will be the duration between rotations, minus the amount of time that passed since the last rotation change.
-        let waitTime = this.changeEveryDuration.milliseconds - ((Date.now() - this.epoch.dateObject.getTime()) % this.changeEveryDuration.milliseconds);
-
+        let waitTime = this.changeEveryDuration.milliseconds - ((currentTime - epochTime) % this.changeEveryDuration.milliseconds);
         // Just in case a timeout was started elsewhere, clear it before starting a new one.
         clearTimeout(this.timeout);
         this.timeout = setTimeout(this.updateRotation, waitTime);
     }
-        
+
     /**  
      * Updates the rotation and TimerDisplays for rotate timers with a changeAt then sets a timeout to call itself again at the next scheduled rotation time.
      *   
@@ -287,43 +343,47 @@ export class RotateTimer{
         // Reset rotation to recalculate it from scratch
         let lastRotation = this.rotation;
         this.rotation = 0;
+        // Store times used in the rotation calculation
         let currentTime = Date.now();
-        let epochTime = this.epoch.dateObject;
+        let epochDate = this.epoch.dateObject;
+        let epochTime = epochDate.getTime();
         // Time in milliseconds until the next rotation
         let waitTime = Infinity;
+        // How many milliseconds into the Erinn day the current time is at
+        const endInErinnDay = (currentTime + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
+        // How many milliseconds into the Server day the current time is at
+        const endInServerDay = dateToMillisecondsAfterServerMidnight(currentTime);
         
         // Erinn times
         //================================================================================================================================================
         if(this.erinnTimes.length > 0){
             // How many milliseconds into the Erinn day the epoch is at
-            const startInDay = (epochTime.getTime() + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
-            // How many milliseconds into the Erinn day the current time is at
-            const endInDay = (currentTime + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
+            const startInDay = (epochTime + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
             // Time since epoch in milliseconds
-            const elapsedTime = currentTime - epochTime.getTime();
+            const elapsedTime = currentTime - epochTime;
             
-            // If startInDay and endInDay are on the same day, just add the rotations between them.
-            if(endInDay - startInDay === elapsedTime){
-                this.rotation += this.erinnTimes.filter(rotationTime => rotationTime > startInDay && rotationTime <= endInDay).length;
-            // If startInDay and endInDay have no full days in between, then just add the rotations from those two partial days.
-            }else if( (TIME_PER_ERINN_DAY - startInDay) + endInDay === elapsedTime){
+            // If startInDay and endInErinnDay are on the same day, just add the rotations between them.
+            if(endInErinnDay - startInDay === elapsedTime){
+                this.rotation += this.erinnTimes.filter(rotationTime => rotationTime > startInDay && rotationTime <= endInErinnDay).length;
+            // If startInDay and endInErinnDay have no full days in between, then just add the rotations from those two partial days.
+            }else if( (TIME_PER_ERINN_DAY - startInDay) + endInErinnDay === elapsedTime){
                 this.rotation += this.erinnTimes.filter(rotationTime => rotationTime > startInDay).length;
-                this.rotation += this.erinnTimes.filter(rotationTime => rotationTime <= endInDay).length;
+                this.rotation += this.erinnTimes.filter(rotationTime => rotationTime <= endInErinnDay).length;
             // There are full days in between. Add the rotations from the two partial days and all the full days between them.
             }else{
                 this.rotation += this.erinnTimes.filter(rotationTime => rotationTime > startInDay).length;
-                this.rotation += this.erinnTimes.filter(rotationTime => rotationTime <= endInDay).length;
-                let daysBetween = (elapsedTime - (TIME_PER_ERINN_DAY-startInDay) - endInDay)/TIME_PER_ERINN_DAY;
+                this.rotation += this.erinnTimes.filter(rotationTime => rotationTime <= endInErinnDay).length;
+                let daysBetween = (elapsedTime - (TIME_PER_ERINN_DAY-startInDay) - endInErinnDay)/TIME_PER_ERINN_DAY;
                 this.rotation += this.erinnTimes.length * daysBetween;
             }
             // Get the next scheduled erinnTime and update waitTime. Minimum waitTime is 1ms.
-            let nextScheduledTime = this.erinnTimes.find(rotationTime => rotationTime > endInDay);
+            let nextScheduledTime = this.erinnTimes.find(rotationTime => rotationTime > endInErinnDay);
             if(typeof nextScheduledTime !== 'undefined'){
                 // Next rotation is today. Adjust it for milliseconds from now.
-                nextScheduledTime -= endInDay;
+                nextScheduledTime -= endInErinnDay;
             }else{
                 // Next rotation is tomorrow. Get the first time tomorrow and add the remainder time from today.
-                nextScheduledTime = this.erinnTimes[0] + TIME_PER_ERINN_DAY - endInDay;
+                nextScheduledTime = this.erinnTimes[0] + TIME_PER_ERINN_DAY - endInErinnDay;
             }
             // Keep current waitTime if it is shorter. Make it 1ms if it is shorter than 1ms.
             waitTime = Math.max(Math.min(waitTime, nextScheduledTime), 1);
@@ -333,47 +393,127 @@ export class RotateTimer{
         //================================================================================================================================================
         if(this.serverTimes.length > 0){
             // How many milliseconds into the Server day the epoch is at
-            const startInDay = dateToMillisecondsAfterServerMidnight(epochTime);
-            // How many milliseconds into the Server day the current time is at
-            const endInDay = dateToMillisecondsAfterServerMidnight(currentTime);
+            const startInDay = dateToMillisecondsAfterServerMidnight(epochDate);
             // Time since epoch in milliseconds
-            const elapsedTime = currentTime - epochTime.getTime();
+            const elapsedTime = currentTime - epochTime;
             
-            // If startInDay and endInDay are on the same day, add the rotations between them.
-            if(endInDay - startInDay === elapsedTime){
-                this.rotation += this.serverTimes.filter(rotationTime => rotationTime > startInDay && rotationTime <= endInDay).length;
-            // If startInDay and endInDay have no full days in between, add the rotations from those two partial days.
-            }else if( (86400000 - startInDay) + endInDay === elapsedTime){
+            // If startInDay and endInServerDay are on the same day, add the rotations between them.
+            if(endInServerDay - startInDay === elapsedTime){
+                this.rotation += this.serverTimes.filter(rotationTime => rotationTime > startInDay && rotationTime <= endInServerDay).length;
+            // If startInDay and endInServerDay have no full days in between, add the rotations from those two partial days.
+            }else if( (86400000 - startInDay) + endInServerDay === elapsedTime){
                 this.rotation += this.serverTimes.filter(rotationTime => rotationTime > startInDay).length;
-                this.rotation += this.serverTimes.filter(rotationTime => rotationTime <= endInDay).length;
+                this.rotation += this.serverTimes.filter(rotationTime => rotationTime <= endInServerDay).length;
             // There are full days in between. Add the rotations from the two partial days and all the full days between them.
             }else{
                 this.rotation += this.serverTimes.filter(rotationTime => rotationTime > startInDay).length;
-                this.rotation += this.serverTimes.filter(rotationTime => rotationTime <= endInDay).length;
-                let daysBetween = (elapsedTime - (86400000-startInDay) - endInDay)/86400000;
+                this.rotation += this.serverTimes.filter(rotationTime => rotationTime <= endInServerDay).length;
+                let daysBetween = (elapsedTime - (86400000-startInDay) - endInServerDay)/86400000;
                 this.rotation += this.serverTimes.length * daysBetween;
             }
 
             // Get the next scheduled serverTime and update waitTime. Minimum waitTime is 1ms.
-            let nextScheduledTime = this.serverTimes.find(rotationTime => rotationTime > endInDay);
+            let nextScheduledTime = this.serverTimes.find(rotationTime => rotationTime > endInServerDay);
             if(typeof nextScheduledTime !== 'undefined'){
                 // Next rotation is today. Adjust it for milliseconds from now.
-                nextScheduledTime -= endInDay;
+                nextScheduledTime -= endInServerDay;
             }else{
                 // Next rotation is tomorrow. Get the first time tomorrow and add the remainder time from today.
-                nextScheduledTime = this.serverTimes[0] + 86400000 - endInDay;
+                nextScheduledTime = this.serverTimes[0] + 86400000 - endInServerDay;
             }
             // Keep current waitTime if it is shorter. Make it 1ms if it is shorter than 1ms.
             waitTime = Math.max(Math.min(waitTime, nextScheduledTime), 1);
         }
 
+        // First rotationData index
+        //================================================================================================================================================
         // If rotation changed, update the TimerDisplays
         if(lastRotation !== this.rotation){
-            lastRotation = this.rotation;
-            // Use the rotation to get the corresponding item from the list
-            let currentSelection = this.list[ this.rotation % this.list.length ];
-            // TODO: implement TimerDisplays. For now, just use the console.
-            console.log(`rotate timer changeAt update: ${currentSelection}`);
+            // TODO: Implement the compression filter. Create a new array using compression and then compare it to rotationData to determine if displays need to be updated. If list value from rotation of first index of first array matches that of second array, copy the first array's first index over to second array to keep the start time of it.
+            // Clear rotationData and recalculate all entries
+            this.rotationData = [];
+            // Keep track of last time added to rotationData
+            // How many milliseconds into the Erinn day the last time was at
+            let lastEndInErinnDay = 0;
+            // How many milliseconds into the Server day the last time was at
+            let lastEndInServerDay = 0;
+
+            // For index 0, get the start time immediately at or before the current time.
+            let lastErinnTime = 0;
+            let lastServerTime = 0;
+            // First look through the Erinn times
+            if(this.erinnTimes.length > 0){
+                lastErinnTime = arrayFindLast(this.erinnTimes, rotationTime => rotationTime <= endInErinnDay);
+                if(typeof lastErinnTime !== 'undefined'){
+                    // There was a time found in the current Erinn day at or before the current time. Adjust for unix epoch.
+                    lastErinnTime = currentTime - (endInErinnDay - lastErinnTime);
+                }else{
+                    // No time found in the current Erinn day at or before the current time. Take the last time of the previous day and adjust for unix epoch.
+                    lastErinnTime = currentTime - endInErinnDay - (TIME_PER_ERINN_DAY - this.erinnTimes[this.erinnTimes.length - 1]);
+                }
+            }
+            // Second look through the Server times
+            if(this.serverTimes.length > 0){
+                lastServerTime = arrayFindLast(this.serverTimes, rotationTime => rotationTime <= endInServerDay);
+                if(typeof lastServerTime !== 'undefined'){
+                    // There was a time found in the current Server day at or before the current time. Adjust for unix epoch.
+                    lastServerTime = currentTime - (endInServerDay - lastServerTime);
+                }else{
+                    // No time found in the current Server day at or before the current time. Take the last time of the previous day and adjust for unix epoch.
+                    lastServerTime = currentTime - endInServerDay - (86400000 - this.serverTimes[this.serverTimes.length - 1]);
+                }
+            }
+            // Use the highest time
+            this.rotationData.push([this.rotation % this.list.length,
+                                    (lastErinnTime > lastServerTime ? lastErinnTime : lastServerTime)]);
+            // Calculate times in the day
+            lastEndInErinnDay = (this.rotationData[0][1] + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
+            lastEndInServerDay = dateToMillisecondsAfterServerMidnight(new Date(this.rotationData[0][1]));
+
+            // Rest of rotationData
+            //================================================================================================================================================
+            // For all other indexes, get the start time immediately after the previous start time.
+            for(let i = 1; i < this.depth; i++){
+                let nextErinnTime = Infinity;
+                let nextServerTime = Infinity;
+                let lastRotationTime = this.rotationData[i-1][1];
+                // First look through the Erinn times
+                if(this.erinnTimes.length > 0){
+                    nextErinnTime = this.erinnTimes.find(rotationTime => rotationTime > lastEndInErinnDay);
+                    if(typeof nextErinnTime !== 'undefined'){
+                        // There was a time found in the current Erinn day after the lastEndInErinnDay. Adjust for unix epoch.
+                        nextErinnTime = lastRotationTime + (nextErinnTime - lastEndInErinnDay);
+                    }else{
+                        // No time found in the current Erinn day after the lastEndInErinnDay. Take the first time of the next day and adjust for unix epoch.
+                        nextErinnTime = lastRotationTime + (TIME_PER_ERINN_DAY - lastEndInErinnDay) + this.erinnTimes[0];
+                    }
+                }
+                // Second look through the Server times
+                if(this.serverTimes.length > 0){
+                    nextServerTime = this.serverTimes.find(rotationTime => rotationTime > lastEndInServerDay);
+                    if(typeof nextServerTime !== 'undefined'){
+                        // There was a time found in the current Server day after the lastEndInServerDay. Adjust for unix epoch.
+                        nextServerTime = lastRotationTime + (nextServerTime - lastEndInServerDay);
+                    }else{
+                        // No time found in the current Server day after the lastEndInServerDay. Take the first time of the next day and adjust for unix epoch.
+                        nextServerTime = lastRotationTime + (86400000 - lastEndInServerDay) + this.serverTimes[0];
+                    }
+                }
+                // Use the lowest time
+                this.rotationData.push([(this.rotation + i) % this.list.length,
+                                        (nextErinnTime < nextServerTime ? nextErinnTime : nextServerTime)]);
+                // Calculate times in the day
+                lastEndInErinnDay = (this.rotationData[i][1] + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
+                lastEndInServerDay = dateToMillisecondsAfterServerMidnight(new Date(this.rotationData[i][1]));
+            }
+
+            // Update displays
+            //================================================================================================================================================
+            // Update all attached TimerDisplays with new rotationData
+            this.updateAllDisplays();
+            // TODO: remove this console log when console displays are implemented
+            console.log(`rotate timer changeAt update:`);
+            console.log( this.rotationData);
         }
         // Just in case a timeout was started elsewhere, clear it before starting a new one.
         clearTimeout(this.timeout);

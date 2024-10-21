@@ -1,5 +1,8 @@
 
-
+/**  
+ * @class TimerDisplay
+ * @classdesc The superclass for all TimerDisplay subclasses.
+ */
 export class TimerDisplay{
     // Prevent the use of the constructor so this class can only be created with TimerDisplay.createInstance
     static _allowConstructor = false;

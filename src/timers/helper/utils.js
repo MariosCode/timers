@@ -50,6 +50,21 @@ export function timerError(warning) {
     return null;
 }
 
+
+/**
+ * Handles general unexpected errors in timer displays. Prints
+ * 
+ * 'Display Error: ' + warning
+ * 
+ * to the console.
+ * 
+ * @param {string} warning - string describing the issue
+ */
+export function timerDisplayError(warning) {
+	console.warn(`Timer Display Error: ${warning}`);
+    return null;
+}
+
 /**
  * turns settings from HTML into an object of arrays of strings.
  * 
@@ -434,4 +449,17 @@ export function dateToMillisecondsAfterServerMidnight(date){
     const millisecond = parseInt(parts.find(p => p.type === 'fractionalSecond').value);
 
     return hour*3600000 + minute*60000 + second*1000 + millisecond;
+}
+
+/**
+ * Works identically to Array.find(), except it finds the last match instead of the first. More efficient than copying the array and reversing it.
+ * @param {Array} arr - The array to perform the search on
+ * @param {Function} condition - The function that must return true for the value to be returned.
+ * @returns - Returns the last value in the provided array that returns true with the provided condition function. Returns undefined if no match was found.
+ */
+export function arrayFindLast(arr, condition){
+    for(let i = arr.length - 1; i >= 0; i--){
+        if(condition(arr[i])) return arr[i];
+    }
+    return undefined;
 }
