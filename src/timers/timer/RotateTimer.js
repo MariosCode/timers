@@ -1,3 +1,4 @@
+import { Timer } from './Timer.js';
 import { TimerDisplay } from '../display/TimerDisplay.js'
 
 import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
@@ -49,7 +50,7 @@ import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
  * - filter: A filter to apply to the timer's output. Valid filters are:
  *   - compress: Compresses the entries such that it only outputs unique ones and adjusts timing accordingly.
  */
-export class RotateTimer{
+export class RotateTimer extends Timer{
     // Prevent the use of the constructor so this class can only be created with RotateTimer.createInstance
     static _allowConstructor = false;
 
@@ -73,6 +74,9 @@ export class RotateTimer{
     constructor({args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout}){
         if(!RotateTimer._allowConstructor) return timerError(`Rotate timers must be instantiated with RotateTimer.createInstance() instead of new RotateTimer()`);
         RotateTimer._allowConstructor = false;
+
+        super();
+        
         // Original parameters
         this.args = args;
         this.list = list;
@@ -95,13 +99,13 @@ export class RotateTimer{
              * Updates the rotation and TimerDisplays for rotate timers then sets a timeout to call itself again at the next scheduled rotation time.
              */
             this.updateRotation = this.#updateRotationChangeEvery.bind(this);
-            this.type = "changeEvery";
+            this.rotationType = "changeEvery";
         }else{
             /**
              * Updates the rotation and TimerDisplays for rotate timers then sets a timeout to call itself again at the next scheduled rotation time.
              */
             this.updateRotation = this.#updateRotationChangeAt.bind(this);
-            this.type = "changeAt";
+            this.rotationType = "changeAt";
         }
 
         /**
@@ -112,9 +116,6 @@ export class RotateTimer{
          * Determines how many arrays to include in rotationData. Determined by the highest depth in the TimerDisplays attached to this timer. Minimum 2.
          */
         this.depth = 2;
-
-        // TODO: remove this when console displays are implemented
-        this.updateRotation();
     }
 
     /**  
@@ -123,23 +124,6 @@ export class RotateTimer{
      * @param {Object.<string, string[]>} args - The args object created from the element with the "settings" class
      * @param {string[]} list - List created from all li elements in a ul or ol element
      * @returns {RotateTimer|null} - Returns an instance of RotateTimer if the parameters are valid, otherwise returns null
-     *   
-     * @example  
-     *   $(".make-timer").each(function () {
-     *       const $this = $(this);
-     *       const args = parseSettings($this.children(".settings").html());
-     *       // Extract list
-     *       const list = [];
-     *       $this.children("ul, ol").children("li").each(function () {
-     *           list.push($(this).html().trim());
-     *       });
-     *       // Empty the list and change the class
-     *       $this.empty().removeClass("make-timer").addClass("timer");
-     *       //assign the TimerDisplay
-     *       let TimerDisplay = new TimerDisplay_type[args.timerDisplay ? args.timerDisplay[0] : "list"]($this, args);
-     *       // Create the timer
-     *       $this.data("timer", RotateTimer.createInstance(null, args, list));
-     *   });
      */
     static createInstance(args, list) {
         // Validate and convert the given parameters into the values used by this class.
@@ -321,9 +305,6 @@ export class RotateTimer{
             }
             // Update all attached TimerDisplays with new rotationData
             this.updateAllDisplays();
-            // TODO: remove this console log when console displays are implemented
-            console.log(`rotate timer changeEvery update:`);
-            console.log(this.rotationData);
         }
 
         // Calculate how long to wait for the next scheduled time
@@ -511,9 +492,6 @@ export class RotateTimer{
             //================================================================================================================================================
             // Update all attached TimerDisplays with new rotationData
             this.updateAllDisplays();
-            // TODO: remove this console log when console displays are implemented
-            console.log(`rotate timer changeAt update:`);
-            console.log( this.rotationData);
         }
         // Just in case a timeout was started elsewhere, clear it before starting a new one.
         clearTimeout(this.timeout);
