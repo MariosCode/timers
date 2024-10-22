@@ -55,7 +55,7 @@ function displayFactory(args){
     args.type[0] = args.type[0].toLowerCase();
 
     // Return the correct new TimerDisplay instance based on args.type
-    if(args.type[0] === 'console') return ConsoleTimerDisplay.createInstance(args);
+    if(args.type[0] === 'console') return new ConsoleTimerDisplay(args);
     else return timerDisplayError(`Timer display type "${args.type}" is an unknown display type.`);
 }
 
