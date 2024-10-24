@@ -1,6 +1,7 @@
 import { RotateTimer } from './timer/RotateTimer.js'
 import { ConsoleTimerDisplay } from './display/ConsoleTimerDisplay.js';
-import { TimerDisplay } from './display/TimerDisplay.js';
+import { ListTimerDisplay } from './display/ListTimerDisplay.js';
+import { CountdownTimerDisplay } from './display/CountdownTimerDisplay.js';
 import { parseSettings,
         timerDisplayError
     } from './helper/utils.js';
@@ -63,6 +64,8 @@ function displayFactory(args){
 
     // Return the correct new TimerDisplay instance based on args.type
     if(args.type[0] === 'console') return new ConsoleTimerDisplay(args);
+    else if(args.type[0] === 'list') return new ListTimerDisplay(args);
+    else if(args.type[0] === 'countdown') return new CountdownTimerDisplay(args);
     else return timerDisplayError(`Timer display type "${args.type}" is an unknown display type.`);
 }
 

@@ -2,19 +2,21 @@ import { TimerDisplay } from "./TimerDisplay.js";
 import { Timer } from "../timer/Timer.js";
 
 /**  
- * @class ListTimerDisplay
- * @classdesc Takes output from a Timer and prints it to HTML based on settings. Lists times that the entries will take place.
+ * @class CountdownTimerDisplay
+ * @classdesc Takes output from a Timer and prints it to HTML based on settings. Shows a countdown for each entry.
  * 
  * The following settings are required in an element with the class "settings":
  * 
  *  - timer: The ID of the timer to receive updates from
  * 
- * Optionally in settings, a list timer display may have the following:
+ * Optionally in settings, a countdown timer display may have the following:
  * 
  *  - depth: A number for how many entries to show. The first entry given is the currently active entry in the timer. Default: 1
- *  - timeFormat: How to format any time displayed by this timer display. The number of letters is the minimum digit count (padded with 0s). Ends with a S for server time, E for Erinn time, L for local time. See {@link TimerDisplay.formatTime} Default: h:mm:ssS
- *  - 12hour: true or false. If true, time is displayed in 12 hour format with a space and AM/PM at the end. Default: false
- *  - entryFormat: How to format each entry of the display. %v for entry's value and %t for entry's time. For example: {The next event is %v at %t.} Default: {%t %v}
+ *  - verbose: true or false. If true, time is displayed with english words. For example "6 days, 10 hours, 58 minutes, 1 second". Default: false
+ *  - timeFormat: How to format the duration of time displayed. The number of letters is the minimum digit count (padded with 0s). See {@link TimerDisplay.formatTime} Default: h:mm:ssS
+ *      >- hideLeading0: true or false. Removes leading zeroes from the formatted time. For example, 0:10:0:10S with the d:hh:mm:ssS format would display as 10:00:10. Default: true
+ *      >- hideAll0: true or false. Removes all zeroes from the formatted time. For example, 0:1:0:10S with the "d:hh:mm:ssS" format would be "1 hour, 10 seconds". Default: false
+ *  - entryFormat: How to format each entry of the display. %v for entry's value and %t for entry's time. For example: {%v will begin in %t.} Default: {%t %v}
  *  - entryStyle: Adds the given style to each outer div containing the entry's value, time, and additional text from entryFormat.
  *  - valueStyle: Adds the given style to each div containing the entry's value.
  *  - timeStyle: Adds the given style to each div containing the entry's time.
@@ -24,16 +26,16 @@ import { Timer } from "../timer/Timer.js";
  *  - startAtEntry: Displays entries starting at this entry number. Useful when stringing multiple displays together for more control over styling. Default: 1
  *  - endAtEntry: Displays entries ending at this entry number. Useful when stringing multiple displays together for more control over styling. Default: Equal to the depth
  */
-export class ListTimerDisplay extends TimerDisplay{
+export class CountdownTimerDisplay extends TimerDisplay{
     /**
-     * Constructor for {@link ListTimerDisplay}
+     * Constructor for {@link CountdownTimerDisplay}
      * @param args - The args object created from the element with the "settings" class
      */
     constructor(args){
         super();
 
         // Validate and convert the given parameters into the values used by this class.
-        let validatedParameters = ListTimerDisplay.#validateParameters(args);
+        let validatedParameters = CountdownTimerDisplay.#validateParameters(args);
         if(!validatedParameters) return null;
 
         /**
@@ -43,7 +45,7 @@ export class ListTimerDisplay extends TimerDisplay{
         this.timerId = validatedParameters.timerId;
 
         /**
-         * The minimum number of scheduled entries the Timer must give to {@link ListTimerDisplay.updateData|updateData}.
+         * The minimum number of scheduled entries the Timer must give to {@link CountdownTimerDisplay.updateData|updateData}.
          * @type {Number}
          */
         this.depth = validatedParameters.depth;
@@ -85,9 +87,9 @@ export class ListTimerDisplay extends TimerDisplay{
     updateDisplay(newTimerData, forceRedraw){
         // Check if this timer needs to redraw its contents unless forceRedraw is true
         if(!forceRedraw){
-            // Check if the currently selected entry has not changed
+            // Check if the currently selected entry and the depth has not changed
             if(newTimerData[0][0] === this.timerData[0][0] && newTimerData[0][1] === this.timerData[0][1]){
-                // Currently selected entry has not changed. For a list display, there is no need to update HTML or update this.timerData
+                // Currently selected entry has not changed. Check if times need to be updated.
                 return;
             }
         }
@@ -100,9 +102,9 @@ export class ListTimerDisplay extends TimerDisplay{
     }
 
     static #validateParameters(args){
-        if(!('timer' in args)) return timerDisplayError('List type timer displays need to have "timer" setting set to a timer element\'s id.');
+        if(!('timer' in args)) return timerDisplayError('Countdown type timer displays need to have "timer" setting set to a timer element\'s id.');
         if(args.timer.length > 1) return timerDisplayError('Timer displays can not have multiple timers attached.');
-        if($(`#${args.timer}`).length < 0) return timerDisplayError(`List type timer displays need to have "timer" setting set to a valid timer element\'s id. Could not find element with id "${args.timer}".`);
+        if($(`#${args.timer}`).length < 0) return timerDisplayError(`Countdown type timer displays need to have "timer" setting set to a valid timer element\'s id. Could not find element with id "${args.timer}".`);
         if( !( $($(`#${args.timer}`)[0]).data('timer') instanceof Timer ) ) return timerDisplayError(`Failed to attach to timer due to the provided timer not being an instance of Timer or its subclasses.`);
 
         // 1 Timer provided and it is valid. Store it to attach later.
