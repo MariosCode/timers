@@ -10,21 +10,23 @@ import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
 
  /**
   * @typedef {Object} Epoch
-  * @property {number} year - Year from the Server date and time string
-  * @property {number} month - Month from the Server date and time string
-  * @property {number} day - Day from the Server date and time string
-  * @property {number} hour - Hour from the Server date and time string
-  * @property {number} minute - Minute from the Server date and time string
-  * @property {number} second - Second from the Server date and time string
-  * @property {number} millisecond - Millisecond from the Server date and time string
+  * @property {Number} year - Year from the Server date and time string
+  * @property {Number} month - Month from the Server date and time string
+  * @property {Number} day - Day from the Server date and time string
+  * @property {Number} hour - Hour from the Server date and time string
+  * @property {Number} minute - Minute from the Server date and time string
+  * @property {Number} second - Second from the Server date and time string
+  * @property {Number} millisecond - Millisecond from the Server date and time string
   * @property {Date} dateObject - Date object from the Server date and time string using the Server's time zone with {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat|Intl.DateTimeFormat}
   */
 
  /**
   * @typedef {Object} Duration
-  * @property {string} timestring - Duration formatted as a full Server time string
-  * @property {number} milliseconds - Duration as milliseconds
+  * @property {String} timestring - Duration formatted as a full Server time string
+  * @property {Number} milliseconds - Duration as milliseconds
   */
+
+ // TODO: to save resources: save scheduled time and immediately wait again if rotate was called too soon. Option to force rotation
 
 /**  
  * @class RotateTimer
@@ -38,7 +40,8 @@ import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
  * The following settings are required in an element with the class "settings":
  * 
  * - epoch: A time the rotation started at the first item in the provided list. For example: "2016-01-31T00:00:00.000S". Must be in Server time and include the date.
- *   - For changeAt rotate timers, the epoch can be any time the rotation was at the first item in the list. For changeEvery rotate timers, the epoch should be the exact time the rotation was at the beginning of first item in the list.
+ *   >- For changeAt rotate timers, the epoch can be any time the rotation was at the first item in the list. For changeEvery rotate timers, the epoch should be the exact time the rotation was at the beginning of first item in the list.
+ * - id: A unique ID to give to this timer so displays can access it
  * 
  * And one of the following:
  * 
@@ -48,7 +51,7 @@ import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
  * Optionally in settings, a rotate timer may have the following:
  * 
  * - filter: A filter to apply to the timer's output. Valid filters are:
- *   - compress: Compresses the entries such that it only outputs unique ones and adjusts timing accordingly.
+ *   >- compress: Compresses the entries such that it only outputs unique ones and adjusts timing accordingly.
  */
 export class RotateTimer extends Timer{
     // Prevent the use of the constructor so this class can only be created with RotateTimer.createInstance
@@ -59,10 +62,10 @@ export class RotateTimer extends Timer{
      * Use {@link RotateTimer.createInstance} to create an instance.  
      *   
      * @param {Object} obj - Object containing all parameters
-     * @param {Object.<string, string[]>} obj.args - The args object created from the element with the "settings" class
-     * @param {string[]} obj.list - List created from all li elements in a ul or ol element
+     * @param {Object.<String, String[]>} obj.args - The args object created from the element with the "settings" class
+     * @param {String[]} obj.list - List created from all li elements in a ul or ol element
      * @param {Epoch} obj.epoch - Object containing the parsed epoch Date from the epoch provided in args
-     * @param {string[]} obj.changeAt - Parsed args.changeAt times
+     * @param {String[]} obj.changeAt - Parsed args.changeAt times
      * @param {Number[]} obj.erinnTimes - The Erinn times from args.changeAt sorted and stored as milliseconds after Erinn midnight
      * @param {Number[]} obj.serverTimes - The Server times from args.changeAt sorted and stored as milliseconds after Server midnight
      * @param {Duration} obj.changeEveryDuration - Object containing the full Server time string and milliseconds for the duration given in args.changeEvery
@@ -121,8 +124,8 @@ export class RotateTimer extends Timer{
     /**  
      * Creates an instance of RotateTimer if all parameters pass validation. Prints an error to console and returns null otherwise.
      *   
-     * @param {Object.<string, string[]>} args - The args object created from the element with the "settings" class
-     * @param {string[]} list - List created from all li elements in a ul or ol element
+     * @param {Object.<String, String[]>} args - The args object created from the element with the "settings" class
+     * @param {String[]} list - List created from all li elements in a ul or ol element
      * @returns {RotateTimer|null} - Returns an instance of RotateTimer if the parameters are valid, otherwise returns null
      */
     static createInstance(args, list) {
@@ -199,9 +202,9 @@ export class RotateTimer extends Timer{
      * Validates and parses the parameters given to createInstance, returning properties needed by the RotateTimer
      *   
      * @param {Object} obj - Object containing all parameters
-     * @param {Object.<string, string[]>} obj.args - The args object created from the element with the "settings" class
-     * @param {string[]} obj.list - List created from all li elements in a ul or ol element
-     * @returns {{epoch: Epoch, updatedChangeAt: string[], erinnTimes: string[], serverTimes: string[], changeEveryDuration: Duration}|null} - Returns an instance of RotateTimer if the parameters are valid, otherwise returns null
+     * @param {Object.<String, String[]>} obj.args - The args object created from the element with the "settings" class
+     * @param {String[]} obj.list - List created from all li elements in a ul or ol element
+     * @returns {{epoch: Epoch, updatedChangeAt: String[], erinnTimes: String[], serverTimes: String[], changeEveryDuration: Duration}|null} - Returns an instance of RotateTimer if the parameters are valid, otherwise returns null
      * @private  
      */  
     static #validateParameters({args, list}){

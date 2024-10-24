@@ -21,8 +21,15 @@ function initializeTimers(){
     
         // Change the class
         $this.removeClass('make-timer').addClass('timer');
-    
-        //$this.data('timer', new timer_type[args.type[0]](display, args, list));
+
+        // Validate the ID
+        if(!('id' in args) || args.id.length > 1 || $(`#${args.id[0]}`).length > 0) return timerError('Timers require a single unique id to be given in the settings.');
+        let validPattern = /^[A-Za-z_][A-Za-z0-9_\-\.]*$/;
+        if(!validPattern.test(args.id[0])) return timerError('Timers require an id that can be used as a valid HTML element id.');
+        // Add the ID
+        $this.attr("id", args.id[0]); 
+
+        // Create the timer
         $this.data('timer', timerFactory(args, list));
     });
 

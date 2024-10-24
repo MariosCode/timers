@@ -5,18 +5,22 @@ export const SERVER_TIMEZONE = 'America/Los_Angeles';
 
 /**
  * in milliseconds
+ * @type {Number}
  */
 export const TIME_PER_ERINN_MINUTE = 1500;
 /**
  * in milliseconds
+ * @type {Number}
  */
 export const TIME_PER_ERINN_HOUR = TIME_PER_ERINN_MINUTE*60;
 /**
  * in milliseconds
+ * @type {Number}
  */
 export const TIME_PER_ERINN_DAY = TIME_PER_ERINN_HOUR*24;
 /**
  * in milliseconds
+ * @type {Number}
  */
 export const ERINN_TIME_OFFSET = TIME_PER_ERINN_HOUR*8;
 
@@ -28,7 +32,7 @@ export const ERINN_TIME_OFFSET = TIME_PER_ERINN_HOUR*8;
  * 
  * to the console.
  * 
- * @param {string} warning - string describing the issue
+ * @param {String} warning - string describing the issue
  */
 export function argumentError(warning) {
 	console.warn(`Argument Error: ${warning}`);
@@ -43,7 +47,7 @@ export function argumentError(warning) {
  * 
  * to the console.
  * 
- * @param {string} warning - string describing the issue
+ * @param {String} warning - string describing the issue
  */
 export function timerError(warning) {
 	console.warn(`Timer Error: ${warning}`);
@@ -58,7 +62,7 @@ export function timerError(warning) {
  * 
  * to the console.
  * 
- * @param {string} warning - string describing the issue
+ * @param {String} warning - string describing the issue
  */
 export function timerDisplayError(warning) {
 	console.warn(`Timer Display Error: ${warning}`);
@@ -68,7 +72,7 @@ export function timerDisplayError(warning) {
 /**
  * turns settings from HTML into an object of arrays of strings.
  * 
- * @param {string} input - string containing the settings to parse.
+ * @param {String} input - string containing the settings to parse.
  * 
  * for example:
  * 
@@ -80,7 +84,7 @@ export function timerDisplayError(warning) {
  * 
  * Multiple groups of touching curly brackets allow you to have multiple values assigned to a key.
  * 
- * @returns {object} - returns an object filled with arrays of strings
+ * @returns {Object} - returns an object filled with arrays of strings
  */
 export function parseSettings(input) {
     const args = {};
@@ -126,7 +130,7 @@ export function parseSettings(input) {
  * 
  * Numbers besides year can be single digit. The T and S can be lowercase.
  * 
- * @param {string} input 
+ * @param {String} input 
  * @returns
  * - returns an object with the date and time from the string separated as individual numbers, and a Date (adjusted for time zone). 
  * - Note the numbers in the returned object are just numbers from the input string which were not adjusted for time zone.
@@ -195,7 +199,7 @@ export function parseServerDateTime(input){
 /**
  * 
  * check if a year is a leap year
- * @param {number} year
+ * @param {Number} year
  */
 export function isLeapYear(year) {
     return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
@@ -209,7 +213,7 @@ export function isLeapYear(year) {
  * simply returns true if the strings are all valid, false if any one of them isn't.
  * 
  * note: durations can be 0. 0:0S is valid.
- * @param {string[]} times
+ * @param {String[]} times
  */
 export function validateDurationTimeStrings(times){
     const regex = /^(?:\d+:\d+S|\d+:\d+:\d+S|\d+:\d+:\d+\.\d+S|\d+:\d+E)$/i;
@@ -222,7 +226,7 @@ export function validateDurationTimeStrings(times){
  * These are validated as times, not durations. Each number can be 1 or 2 digits long, or up to 3 for milliseconds, but must be a valid time.
  * 
  * simply returns true if the strings are all valid, false if any one of them isn't.
- * @param {string[]} times
+ * @param {String[]} times
  */
 export function validateTimeStrings(times){
     //the number of digits matter, since this is a time not a duration
@@ -254,8 +258,8 @@ export function validateTimeStrings(times){
  * takes and validates a Server or Erinn time string or duration and returns the number of milliseconds as a number.
  * 
  * Returns false if time string provided was not a valid time string or duration.
- * @param {string} timeString - the time string to convert
- * @param {boolean} fromMidnight - optionally, if this is true then full days will be removed from the string (to give milliseconds from midnight, assuming duration 0:0 was a midnight)
+ * @param {String} timeString - the time string to convert
+ * @param {Boolean} fromMidnight - optionally, if this is true then full days will be removed from the string (to give milliseconds from midnight, assuming duration 0:0 was a midnight)
  * @return - number of milliseconds as a number
  */
 export function convertTimeStringToRealMilliseconds(timeString, fromMidnight){
@@ -309,7 +313,7 @@ export function convertTimeStringToRealMilliseconds(timeString, fromMidnight){
  * 
  * note: all the numbers will be 2 digits and milliseconds 3 digits, but this is a duration time string and not an actual time so hours can be more than 2 digits.
  * 
- * @param {string} timeString - the time string to convert. Can be in any valid time string format.
+ * @param {String} timeString - the time string to convert. Can be in any valid time string format.
  * @returns - returns an object with the full duration in milliseconds and the time string in hh:mm:ss.sssS format, meant to be used as a duration of time. Returns false if the time string given was invalid.
  */
 export function convertTimeStringToFullServerDurationTimeString(timeString){
@@ -361,7 +365,7 @@ export function convertTimeStringToFullServerDurationTimeString(timeString){
  * 
  * For Server time strings, this will give milliseconds after server midnight that the time occurs.
  * 
- * @param {string} timeString - the time string to convert. Can be in any valid time string format.
+ * @param {String} timeString - the time string to convert. Can be in any valid time string format.
  * @returns - returns an object with the milliseconds after midnight that the time given occurred and a type that is either Erinn or Server. Returns false if the time string given was invalid.
  */
 export function convertTimeStringToMillisecondsAfterMidnight(timeString){
@@ -393,7 +397,7 @@ export function convertTimeStringToMillisecondsAfterMidnight(timeString){
  * 
  * The time string given can be a time or a duration. Either way, assuming the 0 value was also 00:00E, this function will return the time in the Erinn day.
  * 
- * @param {string} timeString - the Server time string to convert
+ * @param {String} timeString - the Server time string to convert
  * @returns - returns the equivalent full Erinn time string as a string, rounded down (1499 miliseconds turns into 0 Erinn minutes). For example '00:01E'.
  * This is a time, not a duration. If the time string/duration time string given was multiple Erinn days long, this will return the time in the last Erinn day.
  */
