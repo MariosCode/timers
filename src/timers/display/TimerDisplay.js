@@ -21,7 +21,7 @@ export class TimerDisplay{
      * 
      * If is12hour is true, the returned time will be in 12 hour format with AM/PM afterwards.
      * 
-     * @param {Number} milliseconds - Milliseconds since unix epoch
+     * @param {Number} millisecondsParam - Milliseconds since unix epoch
      * @param {String} format - Format to turn the milliseconds into
      * @param {Boolean} is12hour - Format the milliseconds in 12 hour format with AM/PM afterwards
      * @returns {String} - Returns the formatted time as a string
@@ -30,7 +30,7 @@ export class TimerDisplay{
         // Validate parameters
         if(!Number.isInteger(millisecondsParam)) return timerDisplayError(`formatTimeClock is Unable to format milliseconds "${millisecondsParam}". Milliseconds must be a whole number.`);
         if(typeof format !== "string") return timerDisplayError(`formatTimeClock is unable to use format "${format}". Format must be a string.`);
-        if(format.length < 1) return timerDisplayError(`formatTimeClock is unable to use format "${format}". String length is too short.`);
+        if(format.length < 2) return timerDisplayError(`formatTimeClock is unable to use format "${format}". String length is too short.`);
 
         // Prepare format
         let validFormatReal = /^(hh|h)(:mm(:ss(\.sss)?)?)?$/;
@@ -39,10 +39,10 @@ export class TimerDisplay{
         format = format.slice(0,-1);
 
         // Prepare variables for units of time
-        let hours = 0; 
-        let minutes = 0; 
-        let seconds = 0; 
-        let milliseconds = 0; 
+        let hours = 0;
+        let minutes = 0;
+        let seconds = 0;
+        let milliseconds = 0;
 
         // Get units of time for a server time
         if(formatType === 'S'){
@@ -86,7 +86,7 @@ export class TimerDisplay{
             minutes = millisecondsParam % TIME_PER_ERINN_MINUTE;
             seconds = millisecondsParam % Math.floor(TIME_PER_ERINN_MINUTE/60); // Math.floor for future proofing, code should handle a change in TIME_PER_ERINN_MINUTE without issue
         }else{
-            return timerDisplayError(`formatTimeClock is unable to use format "${format}". The last charatcer of the string should be S (Server time), Z (local time), or E (Erinn time).`);
+            return timerDisplayError(`formatTimeClock is unable to use format "${format}". The last character of the string should be S (Server time), Z (local time), or E (Erinn time).`);
         }
 
         // Change to 12 hour time
@@ -144,16 +144,186 @@ export class TimerDisplay{
      * - Multiple letters can be used to set a minimum number of digits (padded with 0s)
      * - S and L are identical here and return realtime. E returns Erinn time.
      * 
-     * @param {Number} milliseconds - Milliseconds duration
+     * @param {Number} millisecondsParam - Milliseconds duration
      * @param {String} format - Format to turn the milliseconds into
      * @param {Boolean} verbose - Format using english words
      * @param {Boolean} hideLeading0 - Hide the 0 values at the beginning of the string
      * @param {Boolean} hideAll0 - Hide all 0 values throughout the string
      * @returns {String} - Returns the formatted time as a string
      */
-    static formatTimeDuration(milliseconds, format, verbose = false, hideLeading0 = false, hideAll0 = false){
+    static formatTimeDuration(millisecondsParam, format, verbose = false, hideLeading0 = false, hideAll0 = false){
         // Validate parameters
-        if(!Number.isInteger(milliseconds)) timerDisplayError(`formatTimeDuration is Unable to format milliseconds "${milliseconds}". Milliseconds must be a whole number.`);
+        if(!Number.isInteger(millisecondsParam)) timerDisplayError(`formatTimeDuration is Unable to format milliseconds "${millisecondsParam}". Milliseconds must be a whole number.`);
+        if(typeof format !== "string") return timerDisplayError(`formatTimeDuration is unable to use format "${format}". Format must be a string.`);
+        if(format.length < 2) return timerDisplayError(`formatTimeDuration is unable to use format "${format}". String length is too short.`);
 
+        // Prepare format
+        let validFormatReal = /^(?:([d]+)(?::|$|\.([s]+)$))?(?:([h]+)(?::|$|\.([s]+)$))?(?:([m]+)(?::|$|\.([s]+)$))?([s]+)?(?:\.([s]+)$)?$/i;
+        let validFormatErinn = /^(?:([d]+)(?::|$))?(?:([h]+)(?::|$))?(?:([m]+)(?::|$))?([s]+$)?$/i;
+        let formatType = format[format.length - 1].toUpperCase();
+        format = format.slice(0,-1);
+
+        // Prepare variables for units of time. Use -1 for units of time not being used.
+        let days = -1;
+        let hours = -1;
+        let minutes = -1;
+        let seconds = -1;
+        let milliseconds = -1;
+
+        // Prepare variables for keeping track of the parts of the format.
+        daysPart = false;
+        hoursPart = false;
+        minutesPart = false;
+        secondsPart = false;
+        millisecondsPart = false;
+
+        // Helper function for padding numbers
+        function pad(number, length) {
+            return number.toString().padStart(length, '0');
+        }
+
+        // Get units of time for a real time
+        if(formatType === 'S' || formatType === 'Z'){
+            if (!validFormatReal.test(format)) return timerDisplayError(`formatTimeDuration is unable to use format "${format}". Invalid format pattern.`);
+            // Extract parts from the format. Use false if the format does not use that unit of time.
+            let match = format.match(validFormatReal);
+            daysPart = match[1] || false;
+            hoursPart = match[3] || false;
+            minutesPart = match[5] || false;
+            secondsPart = match[7] || false;
+            millisecondsPart = match[8] || match[6] || match[4] || match[2] || false;
+
+            // Put miliseconds from the parameter into the units of time created previously.
+            if(daysPart){
+                days = pad(Math.floor(millisecondsParam/86400000), daysPart.length);
+                millisecondsParam = millisecondsParam%86400000;
+            }
+            if(hoursPart){
+                hours = pad(Math.floor(millisecondsParam/3600000), hoursPart.length);
+                millisecondsParam = millisecondsParam%3600000;
+            }
+            if(minutesPart){
+                minutes = pad(Math.floor(millisecondsParam/60000), minutesPart.length);
+                millisecondsParam = millisecondsParam%60000;
+            }
+            if(secondsPart){
+                seconds = pad(Math.floor(millisecondsParam/1000), secondsPart.length);
+                millisecondsParam = millisecondsParam%1000;
+            }
+            if(millisecondsPart){
+                milliseconds = pad(Math.floor(millisecondsParam), millisecondsPart.length);
+            }
+
+        // Get units of time for Erinn time
+        }else if(formatType === 'E'){
+            if (!validFormatErinn.test(format)) return timerDisplayError(`formatTimeDuration is unable to use format "${format}". Invalid format pattern.`);
+            // Extract parts from the format. Use false if the format does not use that unit of time.
+            let match = format.match(validFormatErinn);
+            daysPart = match[1] || false;
+            hoursPart = match[2] || false;
+            minutesPart = match[3] || false;
+            secondsPart = match[4] || false;
+
+            // Put miliseconds from the parameter into the units of time created previously.
+            if(daysPart){
+                days = pad(Math.floor(millisecondsParam/TIME_PER_ERINN_DAY), daysPart.length);
+                millisecondsParam = millisecondsParam%TIME_PER_ERINN_DAY;
+            }
+            if(hoursPart){
+                hours = pad(Math.floor(millisecondsParam/TIME_PER_ERINN_HOUR), hoursPart.length);
+                millisecondsParam = millisecondsParam%TIME_PER_ERINN_HOUR;
+            }
+            if(minutesPart){
+                minutes = pad(Math.floor(millisecondsParam/TIME_PER_ERINN_MINUTE), minutesPart.length);
+                millisecondsParam = millisecondsParam%TIME_PER_ERINN_MINUTE;
+            }
+            if(secondsPart){
+                seconds = pad(Math.floor(millisecondsParam/Math.floor(TIME_PER_ERINN_MINUTE/60)), secondsPart.length);
+            }
+        }else{
+            return timerDisplayError(`formatTimeClock is unable to use format "${format}". The last character of the string should be S (Server time), Z (local time), or E (Erinn time).`);
+        }
+
+        // Units of time are formatted. Now apply hideLeading0
+        if(hideLeading0){
+            if(days === -1 || Number(days) === 0){
+                days = -1;
+                if(hours === -1 || Number(hours) === 0){
+                    hours = -1;
+                    if(minutes === -1 || Number(minutes) === 0){
+                        minutes = -1;
+                        if(seconds === -1 || Number(seconds) === 0){
+                            seconds = -1;
+                            if(milliseconds === -1 || Number(milliseconds) === 0){
+                                milliseconds = -1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Apply hideAll0
+        if(hideAll0){
+            if(milliseconds === 0) milliseconds = -1;
+            if(seconds === 0) seconds = -1;
+            if(minutes === 0) minutes = -1;
+            if(hours === 0) hours = -1;
+            if(days === 0) days = -1;
+            
+        }
+
+        // If everything has become -1, set the lowest tracked unit of time to 0
+        if(days === -1 && hours === -1 && minutes === -1 && seconds === -1 && milliseconds === -1){
+            (millisecondsPart ? milliseconds = pad(0,millisecondsPart.length) : (secondsPart ? seconds = pad(0,secondsPart.length) : (minutesPart ? minutes = pad(0,minutesPart.length) : (hoursPart ? hours = pad(0,hoursPart.length) : days = pad(0,daysPart.length)))));
+        }
+
+        // Format each unit of time
+        // Final formatted days
+        if(days !== -1){
+            if(hours !== -1 || minutes !== -1 || seconds !== -1){
+                days = `${days}${(verbose ? ' Days, ' : ':')}`;
+            }else if(milliseconds !== -1){
+                days = `${days}${(verbose ? ' Days, ' : '.')}`;
+            }
+        }else{
+            days = '';
+        }
+        // Final formatted hours
+        if(hours !== -1){
+            if(minutes !== -1 || seconds !== -1){
+                hours = `${hours}${(verbose ? ' Hours, ' : ':')}`;
+            }else if(milliseconds !== -1){
+                hours = `${hours}${(verbose ? ' Hours, ' : '.')}`;
+            }
+        }else{
+            hours = '';
+        }
+        // Final formatted minutes
+        if(minutes !== -1){
+            if(seconds !== -1){
+                minutes = `${minutes}${(verbose ? ' Minutes, ' : ':')}`;
+            }else if(milliseconds !== -1){
+                minutes = `${minutes}${(verbose ? ' Minutes, ' : '.')}`;
+            }
+        }else{
+            minutes = '';
+        }
+        // Final formatted seconds
+        if(seconds !== -1){
+            if(milliseconds !== -1){
+                seconds = `${seconds}${(verbose ? ' Seconds, ' : '.')}`;
+            }
+        }else{
+            seconds = '';
+        }
+        // Final formatted milliseconds
+        if(milliseconds !== -1){
+            milliseconds = `${milliseconds}${(verbose ? ' Milliseconds' : '')}`;
+        }else{
+            milliseconds = '';
+        }
+
+        return `${days}${hours}${minutes}${seconds}${milliseconds}`;
     }
 }
