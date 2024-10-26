@@ -1,5 +1,6 @@
 import { TimerDisplay } from "./TimerDisplay.js";
 import { Timer } from "../timer/Timer.js";
+import { timerDisplayCreationError } from "../helper/utils.js";
 
 /**  
  * @class CountdownTimerDisplay
@@ -13,7 +14,7 @@ import { Timer } from "../timer/Timer.js";
  * 
  *  - depth: A number for how many entries to show. The first entry given is the currently active entry in the timer. Default: 1
  *  - verbose: true or false. If true, time is displayed with english words. For example "6 days, 10 hours, 58 minutes, 1 second". Default: false
- *  - timeFormat: How to format the duration of time displayed. The number of letters is the minimum digit count (padded with 0s). See {@link TimerDisplay.formatTime} Default: h:mm:ssS
+ *  - timeFormat: How to format the duration of time displayed. The number of letters is the minimum digit count (padded with 0s). See {@link TimerDisplay.formatTimeDuration} Default: h:mm:ssS
  *      >- hideLeading0: true or false. Removes leading zeroes from the formatted time. For example, 0:10:0:10S with the d:hh:mm:ssS format would display as 10:00:10. Default: true
  *      >- hideAll0: true or false. Removes all zeroes from the formatted time. For example, 0:1:0:10S with the "d:hh:mm:ssS" format would be "1 hour, 10 seconds". Default: false
  *  - entryFormat: How to format each entry of the display. %v for entry's value and %t for entry's time. For example: {%v will begin in %t.} Default: {%t %v}
@@ -102,18 +103,37 @@ export class CountdownTimerDisplay extends TimerDisplay{
     }
 
     static #validateParameters(args){
-        if(!('timer' in args)) return timerDisplayError('Countdown type timer displays need to have "timer" setting set to a timer element\'s id.');
-        if(args.timer.length > 1) return timerDisplayError('Timer displays can not have multiple timers attached.');
-        if($(`#${args.timer}`).length < 0) return timerDisplayError(`Countdown type timer displays need to have "timer" setting set to a valid timer element\'s id. Could not find element with id "${args.timer}".`);
-        if( !( $($(`#${args.timer}`)[0]).data('timer') instanceof Timer ) ) return timerDisplayError(`Failed to attach to timer due to the provided timer not being an instance of Timer or its subclasses.`);
+        // Validate all args common to most displays
+        let returnObject = TimerDisplay.argValidationAndConversion(args , "countdown");
+        if(!returnObject) return null;
 
-        // 1 Timer provided and it is valid. Store it to attach later.
-        let timerId = args.timer;
-        let timer = $($(`#${args.timer}`)[0]).data('timer');
+        // Validate verbose
+        returnObject.verbose = false;
+        if('verbose' in args){
+            if(args['verbose'].length > 1) return timerDisplayCreationError('verbose can not have more than 1 value.');
+            if(args['verbose'][0].toLowerCase() === 'false') returnObject.verbose = false;
+            else if(args['verbose'][0].toLowerCase() === 'true') returnObject.verbose = true;
+            else return timerDisplayCreationError('verbose must be true or false.');
+        }
 
-        // Validate depth. 1 minimum.
-        let depth = Number(args.depth) ? Math.max(Number(args.depth), 1) : 1;
+        // Validate hideLeading0
+        returnObject.hideLeading0 = true;
+        if('hideLeading0' in args){
+            if(args['hideLeading0'].length > 1) return timerDisplayCreationError('hideLeading0 can not have more than 1 value.');
+            if(args['hideLeading0'][0].toLowerCase() === 'false') returnObject.hideLeading0 = false;
+            else if(args['hideLeading0'][0].toLowerCase() === 'true') returnObject.hideLeading0 = true;
+            else return timerDisplayCreationError('hideLeading0 must be true or false.');
+        }
 
-        return {timerId, depth, timer};
+        // Validate hideAll0
+        returnObject.hideAll0 = true;
+        if('hideAll0' in args){
+            if(args['hideAll0'].length > 1) return timerDisplayCreationError('hideAll0 can not have more than 1 value.');
+            if(args['hideAll0'][0].toLowerCase() === 'false') returnObject.hideAll0 = false;
+            else if(args['hideAll0'][0].toLowerCase() === 'true') returnObject.hideAll0 = true;
+            else return timerDisplayCreationError('hideAll0 must be true or false.');
+        }
+
+        return returnObject;
     }
 }

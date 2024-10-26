@@ -58,7 +58,7 @@ export function timerError(warning) {
 /**
  * Handles general unexpected errors in timer displays. Prints
  * 
- * 'Display Error: ' + warning
+ * 'Timer Display Error: ' + warning
  * 
  * to the console.
  * 
@@ -66,6 +66,21 @@ export function timerError(warning) {
  */
 export function timerDisplayError(warning) {
 	console.warn(`Timer Display Error: ${warning}`);
+    return null;
+}
+
+
+/**
+ * Handles errors in settings validation in timer displays. Prints
+ * 
+ * 'Timer Display Creation Error: ' + warning
+ * 
+ * to the console.
+ * 
+ * @param {String} warning - string describing the issue
+ */
+export function timerDisplayCreationError(warning) {
+	console.warn(`Timer Display Creation Error: ${warning}`);
     return null;
 }
 

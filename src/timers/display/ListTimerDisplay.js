@@ -1,5 +1,6 @@
 import { TimerDisplay } from "./TimerDisplay.js";
 import { Timer } from "../timer/Timer.js";
+import { timerDisplayCreationError } from "../helper/utils.js";
 
 /**  
  * @class ListTimerDisplay
@@ -12,7 +13,7 @@ import { Timer } from "../timer/Timer.js";
  * Optionally in settings, a list timer display may have the following:
  * 
  *  - depth: A number for how many entries to show. The first entry given is the currently active entry in the timer. Default: 1
- *  - timeFormat: How to format any time displayed by this timer display. The number of letters is the minimum digit count (padded with 0s). Ends with a S for server time, E for Erinn time, L for local time. See {@link TimerDisplay.formatTime} Default: h:mm:ssS
+ *  - timeFormat: How to format any time displayed by this timer display. The number of letters is the minimum digit count (padded with 0s). Ends with a S for server time, E for Erinn time, L for local time. See {@link TimerDisplay.formatTimeClock} Default: h:mm:ssS
  *  - 12hour: true or false. If true, time is displayed in 12 hour format with a space and AM/PM at the end. Default: false
  *  - entryFormat: How to format each entry of the display. %v for entry's value and %t for entry's time. For example: {The next event is %v at %t.} Default: {%t %v}
  *  - entryStyle: Adds the given style to each outer div containing the entry's value, time, and additional text from entryFormat.
@@ -265,96 +266,19 @@ export class ListTimerDisplay extends TimerDisplay{
     }
 
     static #validateParameters(args){
-        // Validate timer
-        if(!('timer' in args)) return timerDisplayError('List type timer displays need to have "timer" setting set to a timer element\'s id.');
-        if(args.timer.length > 1) return timerDisplayError('Timer displays can not have multiple timers attached.');
-        if($(`#${args.timer[0]}`).length < 0) return timerDisplayError(`List type timer displays need to have "timer" setting set to a valid timer element\'s id. Could not find element with id "${args.timer}".`);
-        if( !( $($(`#${args.timer[0]}`)[0]).data('timer') instanceof Timer ) ) return timerDisplayError(`Failed to attach to timer due to the provided timer not being an instance of Timer or its subclasses.`);
-
-        // 1 Timer provided and it is valid. Store it to attach later.
-        let timerId = args.timer[0];
-        let timer = $($(`#${args.timer[0]}`)[0]).data('timer');
-
-        // Validate depth. 1 minimum.
-        let depth = 1;
-        if('depth' in args){
-            if(args.depth.length > 1) return timerDisplayError('Timer displays can not have more than 1 depth.');
-            if(!Number.isInteger(Number(args.depth[0]))) return timerDisplayError('depth must be a whole number.');
-            depth = Math.max(Number(args.depth[0]), depth);
-        }
-
-        // Validate time format
-        // Default time format
-        let timeFormat = 'h:mm:ssS';
-        if('timeFormat' in args){
-            if(args.timeFormat.length > 1) return timerDisplayError('Timer displays can not have more than 1 timeFormat.');
-
-            timeFormat = args.timeFormat[0];
-            // Valid patterns
-            let validFormatReal = /^(hh|h)(:mm(:ss(\.sss)?)?)?$/;
-            let validFormatErinn = /^(hh|h)(:mm(:ss)?)?$/;
-            // Get last letter in time format
-            let formatType = timeFormat[timeFormat.length - 1].toUpperCase();
-
-            // Validate pattern
-            if(formatType === 'S' || formatType === 'L'){
-                if (!validFormatReal.test(timeFormat.slice(0,-1))) return timerDisplayError(`timeFormat "${timeFormat}" is an invalid format pattern.`);
-            }else if(formatType === 'E'){
-                if (!validFormatErinn.test(timeFormat.slice(0,-1))) return timerDisplayError(`timeFormat "${timeFormat}" is an invalid format pattern.`);
-            }else{
-                return timerDisplayError('timeFormat must end in S (Server time), L (local time), or E (Erinn time).');
-            }
-
-            // timeFormat is valid
-            timeFormat = args.timeFormat[0];
-        }
+        // Validate all args common to most displays
+        let returnObject = TimerDisplay.argValidationAndConversion(args , "list");
+        if(!returnObject) return null;
 
         // Validate 12hour
-        let is12hour = false;
+        returnObject.is12hour = false;
         if('12hour' in args){
-            if(args['12hour'].length > 1) return timerDisplayError('12hour can not have more than 1 value.');
-            if(args['12hour'][0].toLowerCase() === 'false') is12hour = false;
-            else if(args['12hour'][0].toLowerCase() === 'true') is12hour = true;
-            else return timerDisplayError('12hour must be true or false.');
-        }
-
-        // Validate entryFormat
-        let entryFormat = '%t %v';
-        if('entryFormat' in args){
-            if(args.entryFormat.length > 1) return timerDisplayError('entryFormat can not have more than 1 value.');
-            if(args.entryFormat[0].split('%t').length > 2) return timerDisplayError('entryFormat can not have more than 1 instance of "%t".');
-            if(args.entryFormat[0].split('%v').length > 2) return timerDisplayError('entryFormat can not have more than 1 instance of "%v".');
-            entryFormat = args.entryFormat[0];
-        }
-
-        // Validate styles and classes
-        let entryStyle = '';
-        let valueStyle = '';
-        let timeStyle = '';
-        let entryClass = '';
-        let valueClass = '';
-        let timeClass = '';
-        if('entryStyle' in args) entryStyle = args.entryStyle.join(';');
-        if('valueStyle' in args) valueStyle = args.valueStyle.join(';');
-        if('timeStyle' in args) timeStyle = args.timeStyle.join(';');
-        if('entryClass' in args) entryClass = args.entryClass.join(' ');
-        if('valueClass' in args) valueClass = args.valueClass.join(' ');
-        if('timeClass' in args) timeClass = args.timeClass.join(' ');
-
-        // Validate startAtEntry and endAtEntry
-        let startAtEntry = 1;
-        let endAtEntry = depth;
-        if('startAtEntry' in args){
-            if(args.startAtEntry.length > 1) return timerDisplayError('startAtEntry can not have more than 1 value.');
-            if(!Number.isInteger(Number(args.startAtEntry[0]))) return timerDisplayError('startAtEntry must be a whole number.');
-            startAtEntry = Math.max(Number(args.startAtEntry[0]), 1);
-        }
-        if('endAtEntry' in args){
-            if(args.endAtEntry.length > 1) return timerDisplayError('endAtEntry can not have more than 1 value.');
-            if(!Number.isInteger(Number(args.endAtEntry[0]))) return timerDisplayError('endAtEntry must be a whole number.');
-            endAtEntry = Math.min(Number(args.endAtEntry[0]), depth);
+            if(args['12hour'].length > 1) return timerDisplayCreationError('12hour can not have more than 1 value.');
+            if(args['12hour'][0].toLowerCase() === 'false') returnObject.is12hour = false;
+            else if(args['12hour'][0].toLowerCase() === 'true') returnObject.is12hour = true;
+            else return timerDisplayCreationError('12hour must be true or false.');
         }
         
-        return {timerId, depth, timer, timeFormat, is12hour, entryFormat, entryStyle, valueStyle, timeStyle, entryClass, valueClass, timeClass, startAtEntry, endAtEntry};
+        return returnObject;
     }
 }

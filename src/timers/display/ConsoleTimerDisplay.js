@@ -95,8 +95,8 @@ export class ConsoleTimerDisplay extends TimerDisplay{
         let timerId = args.timer;
         let timer = $($(`#${args.timer}`)[0]).data('timer');
 
-        // Validate depth. 2 minimum.
-        let depth = Number(args.depth) ? Math.max(Number(args.depth), 2) : 2;
+        // Validate depth. 1 minimum.
+        let depth = Number(args.depth) ? Math.max(Number(args.depth), 1) : 1;
 
         return {timerId, depth, timer};
     }
