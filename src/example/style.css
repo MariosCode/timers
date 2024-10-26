@@ -2,6 +2,10 @@
     display: none;
 }
 
+.make-timer-display{
+    display: none;
+}
+
 .timer{
     display: none;
 }

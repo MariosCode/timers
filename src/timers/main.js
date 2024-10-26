@@ -44,7 +44,7 @@ function initializeTimers(){
         // Change the class
         $this.removeClass('make-timer-display').addClass('timer-display');
     
-        $this.data('display', displayFactory(args));
+        $this.data('display', displayFactory(this, args));
     });
 }
 
@@ -55,7 +55,7 @@ function timerFactory(args, list){
     return RotateTimer.createInstance(args, list);
 }
 
-function displayFactory(args){
+function displayFactory(elem, args){
     // Perform argument validations required to perform the correct createInstance
     if(!('type' in args)) return timerDisplayError('Timer displays require a type.');
     if(args.type.length > 1) return timerDisplayError('Timer displays can only have one type.');
@@ -64,8 +64,8 @@ function displayFactory(args){
 
     // Return the correct new TimerDisplay instance based on args.type
     if(args.type[0] === 'console') return new ConsoleTimerDisplay(args);
-    else if(args.type[0] === 'list') return new ListTimerDisplay(args);
-    else if(args.type[0] === 'countdown') return new CountdownTimerDisplay(args);
+    else if(args.type[0] === 'list') return new ListTimerDisplay(elem, args);
+    else if(args.type[0] === 'countdown') return new CountdownTimerDisplay(elem, args);
     else return timerDisplayError(`Timer display type "${args.type}" is an unknown display type.`);
 }
 

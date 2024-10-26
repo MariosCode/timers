@@ -31,7 +31,7 @@ export class CountdownTimerDisplay extends TimerDisplay{
      * Constructor for {@link CountdownTimerDisplay}
      * @param args - The args object created from the element with the "settings" class
      */
-    constructor(args){
+    constructor(element, args){
         super();
 
         // Validate and convert the given parameters into the values used by this class.

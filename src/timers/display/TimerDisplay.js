@@ -66,7 +66,7 @@ export class TimerDisplay{
             milliseconds = parseInt(parts.find(p => p.type === 'fractionalSecond').value);
 
         // Get units of time for a local time
-        }else if(formatType === 'Z'){
+        }else if(formatType === 'L'){
             if (!validFormatReal.test(format)) return timerDisplayError(`formatTimeClock is unable to use format "${format}". Invalid format pattern.`);
             let date = new Date(millisecondsParam);
             // Extract units of time from the Date
@@ -86,7 +86,7 @@ export class TimerDisplay{
             minutes = millisecondsParam % TIME_PER_ERINN_MINUTE;
             seconds = millisecondsParam % Math.floor(TIME_PER_ERINN_MINUTE/60); // Math.floor for future proofing, code should handle a change in TIME_PER_ERINN_MINUTE without issue
         }else{
-            return timerDisplayError(`formatTimeClock is unable to use format "${format}". The last character of the string should be S (Server time), Z (local time), or E (Erinn time).`);
+            return timerDisplayError(`formatTimeClock is unable to use format "${format}". The last character of the string should be S (Server time), L (local time), or E (Erinn time).`);
         }
 
         // Change to 12 hour time
@@ -183,7 +183,7 @@ export class TimerDisplay{
         }
 
         // Get units of time for a real time
-        if(formatType === 'S' || formatType === 'Z'){
+        if(formatType === 'S' || formatType === 'L'){
             if (!validFormatReal.test(format)) return timerDisplayError(`formatTimeDuration is unable to use format "${format}". Invalid format pattern.`);
             // Extract parts from the format. Use false if the format does not use that unit of time.
             let match = format.match(validFormatReal);
@@ -241,7 +241,7 @@ export class TimerDisplay{
                 seconds = pad(Math.floor(millisecondsParam/Math.floor(TIME_PER_ERINN_MINUTE/60)), secondsPart.length);
             }
         }else{
-            return timerDisplayError(`formatTimeClock is unable to use format "${format}". The last character of the string should be S (Server time), Z (local time), or E (Erinn time).`);
+            return timerDisplayError(`formatTimeClock is unable to use format "${format}". The last character of the string should be S (Server time), L (local time), or E (Erinn time).`);
         }
 
         // Units of time are formatted. Now apply hideLeading0

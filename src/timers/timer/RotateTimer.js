@@ -158,16 +158,15 @@ export class RotateTimer extends Timer{
         // Add to the timerDisplays Map
         this.timerDisplays.set(display, true);
 
-        // Update depth if needed
-        this.depth = (this.depth > display.depth ? this.depth : display.depth);
-
-        // If this is the first TimerDisplay added to the Map, begin the rotations.
-        if(this.timerDisplays.size === 1){
+        // If this is the first TimerDisplay added to the Map, begin the rotations. Also update rotation if the depth has changed.
+        if(this.timerDisplays.size === 1 || this.depth < display.depth){
+            // Update depth if needed
+            this.depth = (this.depth < display.depth ? display.depth : this.depth);
             this.updateRotation();
+        }else{
+            // Give this TimerDisplay the up to date rotation data
+            display.updateData(this.rotationData);
         }
-
-        // Give this TimerDisplay the up to date rotation data
-        display.updateData(this.rotationData);
     }
 
     detachDisplay(display){
@@ -297,8 +296,8 @@ export class RotateTimer extends Timer{
         let currentTime = Date.now();
         this.rotation = Math.floor((currentTime - epochTime) / this.changeEveryDuration.milliseconds);
 
-        // If rotation changed, update the TimerDisplays
-        if(lastRotation !== this.rotation){
+        // If rotation or depth changed, update the TimerDisplays
+        if(lastRotation !== this.rotation || this.rotationData.length < this.depth){
             // TODO: Implement the compression filter. Create a new array using compression and then compare it to rotationData to determine if displays need to be updated. If list value from rotation of first index of first array matches that of second array, copy the first array's first index over to second array to keep the start time of it.
             // Clear rotationData and recalculate all entries
             this.rotationData = [];
@@ -411,8 +410,8 @@ export class RotateTimer extends Timer{
 
         // First rotationData index
         //================================================================================================================================================
-        // If rotation changed, update the TimerDisplays
-        if(lastRotation !== this.rotation){
+        // If rotation or depth changed, update the TimerDisplays
+        if(lastRotation !== this.rotation || this.rotationData.length < this.depth){
             // TODO: Implement the compression filter. Create a new array using compression and then compare it to rotationData to determine if displays need to be updated. If list value from rotation of first index of first array matches that of second array, copy the first array's first index over to second array to keep the start time of it.
             // Clear rotationData and recalculate all entries
             this.rotationData = [];
