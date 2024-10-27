@@ -1,6 +1,6 @@
 import { TimerDisplay } from "./TimerDisplay.js";
 import { Timer } from "../timer/Timer.js";
-import { timerDisplayCreationError } from "../helper/utils.js";
+import { TIME_PAGE_LOAD, timerDisplayCreationError, timerDisplayError, camelCase } from "../helper/utils.js";
 
 /**  
  * @class CountdownTimerDisplay
@@ -40,13 +40,19 @@ export class CountdownTimerDisplay extends TimerDisplay{
         if(!validatedParameters) return null;
 
         /**
+         * The HTML element for this display
+         * @type {HTMLElement}
+         */
+        this.element = element;
+
+        /**
          * The ID of the Timer to attach this display to
          * @type {String}
          */
         this.timerId = validatedParameters.timerId;
 
         /**
-         * The minimum number of scheduled entries the Timer must give to {@link CountdownTimerDisplay.updateData|updateData}.
+         * The minimum number of scheduled entries the Timer must give to {@link ListTimerDisplay.updateData|updateData}.
          * @type {Number}
          */
         this.depth = validatedParameters.depth;
@@ -56,6 +62,56 @@ export class CountdownTimerDisplay extends TimerDisplay{
          * @type {Timer}
          */
         this.timer = validatedParameters.timer;
+
+        /**
+         * Whether or not to use english words. For example "6 days, 10 hours, 58 minutes, 1 second".
+         * @type {Boolean}
+         */
+        this.verbose = validatedParameters.verbose;
+
+        /**
+         * Whether or not to hide leading zeroes from the formatted time
+         * @type {Boolean}
+         */
+        this.hideLeading0 = validatedParameters.hideLeading0;
+
+        /**
+         * Whether or not to hide all zeroes from the formatted time
+         * @type {Boolean}
+         */
+        this.hideAll0 = validatedParameters.hideAll0;
+
+        /**
+         * The format to use for the displayed time. Example: "h:mm:ssS"
+         * @type {String}
+         */
+        this.timeFormat = validatedParameters.timeFormat;
+
+        /**
+         * The format to use for each displayed entry. Example: "{%t %v}"
+         * @type {String}
+         */
+        this.entryFormat = validatedParameters.entryFormat;
+
+        // Adds styles and class names to the generated divs
+        this.entryStyle = validatedParameters.entryStyle;
+        this.valueStyle = validatedParameters.valueStyle;
+        this.timeStyle = validatedParameters.timeStyle;
+        this.entryClass = validatedParameters.entryClass;
+        this.valueClass = validatedParameters.valueClass;
+        this.timeClass = validatedParameters.timeClass;
+
+        /**
+         * Displays entries starting at this entry number
+         * @type {Number}
+         */
+        this.startAtEntry = validatedParameters.startAtEntry;
+
+        /**
+         * Displays entries ending at this entry number
+         * @type {Number}
+         */
+        this.endAtEntry = validatedParameters.endAtEntry;
         
         /**
          * The original arguments provided from the settings element
@@ -64,11 +120,24 @@ export class CountdownTimerDisplay extends TimerDisplay{
         this.args = args;
 
         /**
+         * The currently queued requestAnimationFrame (to prevent queueing multiple frames when the tab is inactive)
+         * @type {Number|null}
+         */
+        this.redrawID = null;
+
+        /**
          * Data obtained from the attached timer
          * @type {Number[][]}
          */
         this.timerData = [];
 
+        /**
+         * The HTML Elements containing the data from timerData
+         * @type {JQuery<HTMLElement>[]}
+         */
+        this.dataElements = [];
+
+        this.initializeElements();
         this.timer.attachDisplay(this);
     }
 
@@ -81,25 +150,124 @@ export class CountdownTimerDisplay extends TimerDisplay{
     }
 
     /**
+     * Using updated data from a timer, updates properties and queues a redraw of the display's HTML contents if necessary.
      * @param {Number[][]} newTimerData - 2D array with the entry index from the timer's list and its start time as unix epoch. First entry in this array is the currently active entry.
      * @param {Boolean} forceRedraw - Whether or not to force a redraw even if there is no change in data.
      * @returns 
      */
     updateDisplay(newTimerData, forceRedraw){
-        // Check if this timer needs to redraw its contents unless forceRedraw is true
-        if(!forceRedraw){
-            // Check if the currently selected entry and the depth has not changed
-            if(newTimerData[0][0] === this.timerData[0][0] && newTimerData[0][1] === this.timerData[0][1]){
-                // Currently selected entry has not changed. Check if times need to be updated.
-                return;
-            }
-        }
-        // There is a new active entry or forceRedraw was true.
-        // Store the updated data
+        // Cancel if updating display with this data is impossible
+        if(newTimerData.length < this.depth) return timerDisplayError('Countdown type timer display failed an update due to invalid timerData length.'); 
+        // Checking here if a countdown display needs to redraw would cause slight desyncs between timers due to varying Date.now values. It is better to use the timestamp provided by requestAnimationFrame.
         this.timerData = newTimerData.slice();
 
-        // Send the raw data to the JavaScript console. TOTO: update the HTML instead
-        console.log(`Timer ID ${this.timerId} update:`,this.timerData);
+        // Redraw the display on the next animation frame if a redraw isn't already queued
+        if(this.redrawID === null){
+            this.redrawID = requestAnimationFrame(this.redraw.bind(this));
+        }
+    }
+
+    /**
+     * Redraws the HTML contents of this display.
+     * This will recalculate what each entry time and value should be displaying.\
+     * 
+     * Note: The display should be initialized with {@link CountdownTimerDisplay.initializeElements|initializeElements} before redrawing. redraw assumes the display's elements already exist.
+     * @param {Number} timestamp - The timestamp provided by requestAnimationFrame
+     */
+    redraw(timestamp){
+        // Loop through all entries
+        for(let i = 0; i < this.depth; i++){
+            // Update time
+            if(this.dataElements[i*2]){
+                this.dataElements[i*2].text(TimerDisplay.formatTimeDuration( Math.floor(Math.max(this.timerData[i][1] - TIME_PAGE_LOAD - timestamp, 0)), this.timeFormat, this.verbose, this.hideLeading0, this.hideAll0));
+            }
+            // Update entry value
+            if(this.dataElements[i*2 + 1]){
+                this.dataElements[i*2 + 1].text(this.timer.list[this.timerData[i][0]]);
+            }
+        }
+        // Immediately queue a new redraw.
+        this.redrawID = requestAnimationFrame(this.redraw.bind(this));
+    }
+
+    /**
+     * Clears the display's element and recreates its contents.
+     * 
+     * Note: Entries will have no text content until the next {@link CountdownTimerDisplay.redraw|redraw}. Use  {@link CountdownTimerDisplay.updateDisplay|this.updateDisplay(this.timerData, true)} to force a redraw.
+     */
+    initializeElements(){
+        // Empty the display's HTML
+        $(this.element).empty();
+        this.dataElements = [];
+        // Container to append all elements at once
+        let $elements = $();
+
+        // Sanitize the CSS styles
+        // Entry style
+        let entryStyleObj = this.entryStyle.split(';').reduce((accumulator, style) => {
+            let [key, value] = style.split(':');
+            if (key && value) {
+                // A whitelist could be applied here to control which CSS styles are permitted
+                accumulator[camelCase(key.trim())] = value.trim();
+            }
+            return accumulator;
+        }, {});
+
+        // Value style
+        let valueStyleObj = this.valueStyle.split(';').reduce((accumulator, style) => {
+            let [key, value] = style.split(':');
+            if (key && value) {
+                // A whitelist could be applied here to control which CSS styles are permitted
+                accumulator[camelCase(key.trim())] = value.trim();
+            }
+            return accumulator;
+        }, {});
+
+        // Time style
+        let timeStyleObj = this.timeStyle.split(';').reduce((accumulator, style) => {
+            let [key, value] = style.split(':');
+            if (key && value) {
+                // A whitelist could be applied here to control which CSS styles are permitted
+                accumulator[camelCase(key.trim())] = value.trim();
+            }
+            return accumulator;
+        }, {});
+
+        // Split the template at the placeholders
+        let templateParts = this.entryFormat.split(/(%v|%t)/);
+
+        // Loop through every entry
+        for (let i = 0; i < this.depth; i++) {
+            // The wrapper for the entry, with entryClass and entryStyle applied
+            let $entry = $('<div></div>').addClass(this.entryClass).css(entryStyleObj);
+        
+            let $valuePart = null;
+            let $timePart = null;
+        
+            // Iterate through the templateParts and replace placeholders
+            templateParts.forEach(part => {
+                // Entry time
+                if (part === '%t') {
+                    $timePart = $('<div></div>').addClass(this.timeClass).css(timeStyleObj);
+                    $entry.append($timePart);
+                // Entry value
+                } else if (part === '%v') {
+                    $valuePart = $('<div></div>').addClass(this.valueClass).css(valueStyleObj);
+                    $entry.append($valuePart);
+                // Treat other parts as plain text
+                } else {
+                    $entry.append(document.createTextNode(part));
+                }
+            });
+        
+            // Add the entry's time and value divs to this.dataElements so they can be updated
+            this.dataElements.push($timePart , $valuePart);
+            // Add the entry to the container to later append to the HTML
+            $elements = $elements.add($entry);
+        }
+
+        // Append all created elements to the parent element at once
+        $(this.element).append($elements);
     }
 
     static #validateParameters(args){

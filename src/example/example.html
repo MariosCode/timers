@@ -11,13 +11,24 @@
       today timer console display
       <span class="settings">type=console depth=5 timer=todayTimer</span>
     </div>
+
+    <br/>
+
     <div class="make-timer-display">
       counting timer console display
       <span class="settings">type=console timer=countingTimer</span>
     </div>
+
+    <br/>
     
     <div class="make-timer-display">
-      <span class="settings">type=list depth=10 timer=countingTimer</span>
+      <span class="settings">type=list depth=10 timer=countingTimer timeStyle={display:inline-block;padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ssL 12hour=true</span>
+    </div>
+
+    <br/>
+   
+    <div class="make-timer-display">
+      <span class="settings">type=countdown depth=50 timer=todayTimer timeStyle={display:inline-block;padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ss.sssS</span>
     </div>
 
 

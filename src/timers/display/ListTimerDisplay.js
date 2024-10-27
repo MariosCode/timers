@@ -1,6 +1,6 @@
 import { TimerDisplay } from "./TimerDisplay.js";
 import { Timer } from "../timer/Timer.js";
-import { timerDisplayCreationError } from "../helper/utils.js";
+import { timerDisplayCreationError, timerDisplayError, camelCase } from "../helper/utils.js";
 
 /**  
  * @class ListTimerDisplay
@@ -158,7 +158,7 @@ export class ListTimerDisplay extends TimerDisplay{
 
         // Redraw the display on the next animation frame if a redraw isn't already queued
         if(this.redrawID === null){
-            this.redrawID = requestAnimationFrame(() => this.redraw());
+            this.redrawID = requestAnimationFrame(this.redraw.bind(this));
         }
     }
 
@@ -181,14 +181,14 @@ export class ListTimerDisplay extends TimerDisplay{
                 this.dataElements[i*2 + 1].text(this.timer.list[this.timerData[i][0]]);
             }
         }
-        // allow queueing a new redraw
+        // Allow queueing a new redraw
         this.redrawID = null;
     }
 
     /**
      * Clears the display's element and recreates its contents.
      * 
-     * Note: Entries will have no text content until the next {@link ListTimerDisplay.redraw|redraw}. Use  {@link ListTimerDisplay.updateDisplay|updateDisplay(this.timerData, true)} to force a redraw.
+     * Note: Entries will have no text content until the next {@link ListTimerDisplay.redraw|redraw}. Use  {@link ListTimerDisplay.updateDisplay|this.updateDisplay(this.timerData, true)} to force a redraw.
      */
     initializeElements(){
         // Empty the display's HTML
@@ -198,12 +198,17 @@ export class ListTimerDisplay extends TimerDisplay{
         let $elements = $();
 
         // Sanitize the CSS styles
+        function camelCase(str){
+            return str.replace(/-([a-z])/gi, function(match, letter){
+                return letter.toUpperCase();
+            });
+        }
         // Entry style
         let entryStyleObj = this.entryStyle.split(';').reduce((accumulator, style) => {
             let [key, value] = style.split(':');
             if (key && value) {
                 // A whitelist could be applied here to control which CSS styles are permitted
-                accumulator[key.trim()] = value.trim();
+                accumulator[camelCase(key.trim())] = value.trim();
             }
             return accumulator;
         }, {});
@@ -213,7 +218,7 @@ export class ListTimerDisplay extends TimerDisplay{
             let [key, value] = style.split(':');
             if (key && value) {
                 // A whitelist could be applied here to control which CSS styles are permitted
-                accumulator[key.trim()] = value.trim();
+                accumulator[camelCase(key.trim())] = value.trim();
             }
             return accumulator;
         }, {});
@@ -223,7 +228,7 @@ export class ListTimerDisplay extends TimerDisplay{
             let [key, value] = style.split(':');
             if (key && value) {
                 // A whitelist could be applied here to control which CSS styles are permitted
-                accumulator[key.trim()] = value.trim();
+                accumulator[camelCase(key.trim())] = value.trim();
             }
             return accumulator;
         }, {});

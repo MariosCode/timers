@@ -1,4 +1,10 @@
 /**
+ * The time since unix epoch that the page loaded. Used with the timestamp from requestAnimationFrame to keep timer displays in sync
+ * @type {Number}
+ */
+export const TIME_PAGE_LOAD = Date.now() - performance.now();
+
+/**
  * server timezone for use with {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat|Intl.DateTimeFormat}
  */
 export const SERVER_TIMEZONE = 'America/Los_Angeles';
@@ -481,4 +487,10 @@ export function arrayFindLast(arr, condition){
         if(condition(arr[i])) return arr[i];
     }
     return undefined;
+}
+
+export function camelCase(str){
+    return str.replace(/-([a-z])/gi, function(match, letter){
+        return letter.toUpperCase();
+    });
 }

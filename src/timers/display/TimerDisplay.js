@@ -1,4 +1,5 @@
-import { SERVER_TIMEZONE, ERINN_TIME_OFFSET, TIME_PER_ERINN_MINUTE, TIME_PER_ERINN_HOUR, TIME_PER_ERINN_DAY, timerDisplayCreationError } from '../helper/utils.js';
+import { SERVER_TIMEZONE, ERINN_TIME_OFFSET, TIME_PER_ERINN_MINUTE, TIME_PER_ERINN_HOUR, TIME_PER_ERINN_DAY, timerDisplayError, timerDisplayCreationError } from '../helper/utils.js';
+import { Timer } from '../timer/Timer.js'
 
 /**  
  * @class TimerDisplay
@@ -153,7 +154,7 @@ export class TimerDisplay{
      */
     static formatTimeDuration(millisecondsParam, format, verbose = false, hideLeading0 = false, hideAll0 = false){
         // Validate parameters
-        if(!Number.isInteger(millisecondsParam)) timerDisplayError(`formatTimeDuration is Unable to format milliseconds "${millisecondsParam}". Milliseconds must be a whole number.`);
+        if(!Number.isInteger(millisecondsParam)) return timerDisplayError(`formatTimeDuration is Unable to format milliseconds "${millisecondsParam}". Milliseconds must be a whole number.`);
         if(typeof format !== "string") return timerDisplayError(`formatTimeDuration is unable to use format "${format}". Format must be a string.`);
         if(format.length < 2) return timerDisplayError(`formatTimeDuration is unable to use format "${format}". String length is too short.`);
 
@@ -171,11 +172,11 @@ export class TimerDisplay{
         let milliseconds = -1;
 
         // Prepare variables for keeping track of the parts of the format.
-        daysPart = false;
-        hoursPart = false;
-        minutesPart = false;
-        secondsPart = false;
-        millisecondsPart = false;
+        let daysPart = false;
+        let hoursPart = false;
+        let minutesPart = false;
+        let secondsPart = false;
+        let millisecondsPart = false;
 
         // Helper function for padding numbers
         function pad(number, length) {
@@ -427,6 +428,6 @@ export class TimerDisplay{
             endAtEntry = Math.min( Math.max(Number(args.endAtEntry[0]), startAtEntry) , depth );
         }
 
-        return {timerId, depth, timer, timeFormat, is12hour, entryFormat, entryStyle, valueStyle, timeStyle, entryClass, valueClass, timeClass, startAtEntry, endAtEntry};
+        return {timerId, depth, timer, timeFormat, entryFormat, entryStyle, valueStyle, timeStyle, entryClass, valueClass, timeClass, startAtEntry, endAtEntry};
     }
 }
