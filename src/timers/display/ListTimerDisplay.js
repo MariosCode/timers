@@ -133,6 +133,8 @@ export class ListTimerDisplay extends TimerDisplay{
          */
         this.dataElements = [];
 
+        this.redraw = this.#redraw.bind(this);
+
         this.initializeElements();
         this.timer.attachDisplay(this);
     }
@@ -142,15 +144,15 @@ export class ListTimerDisplay extends TimerDisplay{
      * @param {Number[][]} newTimerData - 2D array with the entry index from the timer's list and its start time as unix epoch. First entry in this array is the currently active entry.
      */
     updateData(newTimerData){
-        // Make a clone of the rotationData array to safely modify it
-        let modifiedTimerData = newTimerData.map(individualEntryData => [individualEntryData[0], individualEntryData[1]]);
         // Apply query filter
         if(this.query.length > 0){
             let list = this.timer.list;
-            modifiedTimerData = modifiedTimerData.filter(entry => this.query.includes(list[entry[0]]))
+            for(let i = newTimerData.length-2; i >=0; i -= 2){
+                if(!this.query.includes(list[newTimerData[i]])) newTimerData.splice(i,2);
+            }
         }
 
-        this.updateDisplay(modifiedTimerData, false);
+        this.updateDisplay(newTimerData, false);
     }
 
     /**
@@ -161,22 +163,22 @@ export class ListTimerDisplay extends TimerDisplay{
      */
     updateDisplay(newTimerData, forceRedraw){
         // Cancel if updating display with this data is impossible
-        if(newTimerData.length < this.depth) return timerDisplayError('List type timer display failed an update due to invalid timerData length.'); 
+        if(newTimerData.length/2 < this.depth) return timerDisplayError(`List type timer display failed an update due to invalid timerData length. Length expected: ${this.depth*2} timerData:`, newTimerData); 
         // Check if this timer needs to redraw its contents unless forceRedraw is true or the display has no timer data stored
         if(!forceRedraw && this.timerData.length > 0){
             // Check if the currently selected entry has not changed
-            if(newTimerData[0][0] === this.timerData[0][0] && newTimerData[0][1] === this.timerData[0][1]){
+            if(newTimerData[0] === this.timerData[0] && newTimerData[1] === this.timerData[1]){
                 // Currently selected entry has not changed. For a list display, there is no need to update HTML or update this.timerData
                 return;
             }
         }
         // There is a new active entry or forceRedraw was true.
         // Store the updated data
-        this.timerData = newTimerData.map(individualEntryData => [individualEntryData[0], individualEntryData[1]]);
+        this.timerData = newTimerData.slice();
 
         // Redraw the display on the next animation frame if a redraw isn't already queued
         if(this.redrawID === null){
-            this.redrawID = requestAnimationFrame(this.redraw.bind(this));
+            this.redrawID = requestAnimationFrame(this.redraw);
         }
     }
 
@@ -187,16 +189,16 @@ export class ListTimerDisplay extends TimerDisplay{
      * 
      * Note: The display should be initialized with {@link ListTimerDisplay.initializeElements|initializeElements} before redrawing. redraw assumes the display's elements already exist.
      */
-    redraw(){
+    #redraw(){
         // Loop through all entries
         for(let i = 0; i < this.depth; i++){
             // Update time
             if(this.dataElements[i*2]){
-                this.dataElements[i*2].text(TimerDisplay.formatTimeClock(this.timerData[i][1], this.timeFormat, this.is12hour));
+                this.dataElements[i*2].text(TimerDisplay.formatTimeClock(this.timerData[i*2+1], this.timeFormat, this.is12hour));
             }
             // Update entry value
             if(this.dataElements[i*2 + 1]){
-                this.dataElements[i*2 + 1].text(this.timer.list[this.timerData[i][0]]);
+                this.dataElements[i*2 + 1].text(this.timer.list[this.timerData[i*2]]);
             }
         }
         // Allow queueing a new redraw

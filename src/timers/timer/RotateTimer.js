@@ -71,7 +71,7 @@ export class RotateTimer extends Timer{
      * @param {Number[]} obj.serverTimes - The Server times from args.changeAt sorted and stored as milliseconds after Server midnight
      * @param {Duration} obj.changeEveryDuration - Object containing the full Server time string and milliseconds for the duration given in args.changeEvery
      * @param {Number} obj.rotation - Number of rotations that have passed
-     * @param {Array.<[Number, Number]>} obj.rotationData - Rotation data to be given to attached displays. All array items are [list item index, start time for this list item in milliseconds since unix epoch].
+     * @param {Number[]} obj.rotationData - Rotation data to be given to attached displays. Numbers are in pairs: list item index, start time for this list item in milliseconds since unix epoch.
      * @param {Number} obj.timeout - Timeout ID for the next execution of updateRotation so it can be canceled
      * @private  
      */  
@@ -119,16 +119,20 @@ export class RotateTimer extends Timer{
         this.timerDisplays = new Map();
 
         /**
-         * Determines how many arrays to include in rotationData. Determined by the highest depth in the TimerDisplays attached to this timer. Minimum 2.
+         * Determines how many entries to include in rotationData. Determined by the highest depth in the TimerDisplays attached to this timer. Minimum 2.
          */
         this.depth = 2;
 
         /**
-         * Overrides depth and keeps adding to rotationData until conditions of all queries are fulfilled.
-         * 
-         * Query data is organized as [ [Strings array, Number] ]: [ [strings (each being an exact match for a value in this.list)], number (the depth of the attached display with this query) ]
+         * Overrides depth and keeps adding to rotationData until conditions of all queries are fulfilled. This array contains the arrays of strings for each display with a query.
+         * @type {String[][]}
          */
         this.query = [];
+        /**
+         * Overrides depth and keeps adding to rotationData until conditions of all queries are fulfilled. This array contains the depth for each display with a query.
+         * @type {Number[]}
+         */
+        this.queryDepth = [];
         /**
          * Keeps track of changes to this.query to determine if rotationData needs to be updated
          */
@@ -175,7 +179,8 @@ export class RotateTimer extends Timer{
 
         // Add the display's query, if there is one
         if(display.query && display.query.length > 0){
-            this.query.push([ display.query , display.depth ]);
+            this.query.push(display.query.slice());
+            this.queryDepth.push(display.depth);
             this.queryChanged = true;
         }
 
@@ -201,6 +206,7 @@ export class RotateTimer extends Timer{
             clearTimeout(this.timeout);
             this.depth = 2;
             this.query = [];
+            this.queryDepth = [];
             this.queryChanged = true;
         // Otherwise, recalculate the depth and query if necessary.
         }else{
@@ -218,16 +224,21 @@ export class RotateTimer extends Timer{
 
     recalculateQuery(){
         this.query = [];
+        this.queryDepth = [];
         this.queryChanged = true;
         this.timerDisplays.forEach((value, display) => {
-            if(display.query && display.query.length > 0) this.query.push([ display.query , display.depth ]);
+            if(display.query && display.query.length > 0){
+                this.query.push(display.query.slice());
+                this.queryDepth.push(display.depth);
+            }
         });
     }
 
     updateAllDisplays() {
         this.timerDisplays.forEach((value, display) => {
-            display.updateData(this.rotationData);
+            display.updateData(this.rotationData.slice());
         });
+        this.queryChanged = false;
     }
 
     /**  
@@ -334,42 +345,40 @@ export class RotateTimer extends Timer{
         this.rotation = Math.floor((currentTime - epochTime) / this.changeEveryDuration.milliseconds);
 
         // If rotation, depth, or query changed: Update the TimerDisplays
-        if(lastRotation !== this.rotation || this.rotationData.length < this.depth || this.queryChanged){
+        if(lastRotation !== this.rotation || this.rotationData.length/2 < this.depth || this.queryChanged){
             // Store previous active entry. Needed if compress filter is used.
             let previousActiveEntry = [];
-            if(this.rotationData.length > 0) previousActiveEntry = this.rotationData[0].slice();
+            if(this.rotationData.length > 0) previousActiveEntry = [this.rotationData[0], this.rotationData[1]];
             // Clear rotationData and recalculate all entries
             this.rotationData = [];
             // Keep track of queries that still need to be fulfilled
-            let remainingQuery = this.query.map(individualQuery => [individualQuery[0].slice(), individualQuery[1]]);
+            let remainingQuery = this.queryDepth.slice();
+            let remainingQueryAmount = this.queryDepth.length;
             // Loop until depth is reached and no query remains unfulfilled
-            for(let i = 0; this.rotationData.length < this.depth || remainingQuery.length > 0; i++){
+            for(let i = 0; this.rotationData.length/2 < this.depth || remainingQueryAmount > 0; i++){
                 // If the compress filter is being used and the currently active entry hasn't changed, keep it as it is so the start time doesn't change.
                 if(this.compress && i === 0 && previousActiveEntry.length > 0 && this.list[this.rotation % this.list.length] === this.list[previousActiveEntry[0]]){
-                    this.rotationData.push(previousActiveEntry.slice());
+                    this.rotationData.push(previousActiveEntry[0], previousActiveEntry[1]);
                 }else{
                     // Continue to the next loop if compression is on and the last recorded entry has the same list value as this loop's entry.
                     if(this.compress && i !== 0){
-                        if(this.list[this.rotationData[this.rotationData.length-1][0]] === this.list[(this.rotation + i) % this.list.length]) continue;
+                        if(this.list[this.rotationData[this.rotationData.length-2]] === this.list[(this.rotation + i) % this.list.length]) continue;
                     }
                     // Record this entry
-                    this.rotationData.push([(this.rotation + i) % this.list.length,
-                        epochTime + ((this.rotation + i) * this.changeEveryDuration.milliseconds)]);
+                    this.rotationData.push((this.rotation + i) % this.list.length,
+                        epochTime + ((this.rotation + i) * this.changeEveryDuration.milliseconds));
                 }
                 // Update queries
-                if(remainingQuery.length > 0){
-                    let listValue = this.list[this.rotationData[this.rotationData.length-1][0]];
-                    for(let k = remainingQuery.length - 1; k >= 0; k--){
-                        let [queryValues, amount] = remainingQuery[k];
-                        if(queryValues.includes(listValue)){
-                            amount--;
-                            if(amount <= 0){
-                                remainingQuery.splice(k,1);
-                            }else{
-                                remainingQuery[k][1] = amount;
+                if(remainingQueryAmount > 0){
+                    let listValue = this.list[this.rotationData[this.rotationData.length-2]];
+                    this.query.forEach( (queryArr, index) => {
+                        if(queryArr.includes(listValue)){
+                            remainingQuery[index]--;
+                            if(remainingQuery[index] === 0){
+                                remainingQueryAmount--;
                             }
                         }
-                    }
+                    });
                 }
             }
             // Update all attached TimerDisplays with new rotationData
@@ -478,14 +487,15 @@ export class RotateTimer extends Timer{
         // First rotationData index
         //================================================================================================================================================
         // If rotation, depth, or query changed: Update the TimerDisplays
-        if(lastRotation !== this.rotation || this.rotationData.length < this.depth || this.queryChanged){
+        if(lastRotation !== this.rotation || this.rotationData.length/2 < this.depth || this.queryChanged){
             // Store previous active entry. Needed if compress filter is used.
             let previousActiveEntry = [];
-            if(this.rotationData.length > 0) previousActiveEntry = this.rotationData[0].slice();
+            if(this.rotationData.length > 0) previousActiveEntry = [this.rotationData[0], this.rotationData[1]];
             // rotationData is needed for calculations, so store compressed data separately for now.
             let compressedRotationData = [];
             // Keep track of queries that still need to be fulfilled
-            let remainingQuery = this.query.map(individualQuery => [individualQuery[0].slice(), individualQuery[1]]);;
+            let remainingQuery = this.queryDepth.slice();
+            let remainingQueryAmount = this.queryDepth.length;
             // Keep track of last time added to rotationData
             // How many milliseconds into the Erinn day the last time was at
             let lastEndInErinnDay = 0;
@@ -521,44 +531,41 @@ export class RotateTimer extends Timer{
                 }
             }
             // Use the highest time
-            this.rotationData.push([this.rotation % this.list.length,
-                                    (lastErinnTime > lastServerTime ? lastErinnTime : lastServerTime)]);
+            this.rotationData.push(this.rotation % this.list.length,
+                                    (lastErinnTime > lastServerTime ? lastErinnTime : lastServerTime));
             // Calculate times in the day
-            lastEndInErinnDay = (this.rotationData[0][1] + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
-            lastEndInServerDay = dateToMillisecondsAfterServerMidnight(new Date(this.rotationData[0][1]));
+            lastEndInErinnDay = (this.rotationData[1] + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
+            lastEndInServerDay = dateToMillisecondsAfterServerMidnight(new Date(this.rotationData[1]));
 
             // If compress is being used, store compressed data for the first entry
             if(this.compress){
                 if(previousActiveEntry.length > 0 && this.list[this.rotation % this.list.length] === this.list[previousActiveEntry[0]]){
-                    compressedRotationData.push(previousActiveEntry.slice());
+                    compressedRotationData.push(previousActiveEntry[0],previousActiveEntry[1]);
                 }else{
-                    compressedRotationData.push(this.rotationData[0].slice());
+                    compressedRotationData.push(this.rotationData[0], this.rotationData[1]);
                 }
             }
 
-            // Update query
-            if(remainingQuery.length > 0){
-                let listValue = this.compress ? this.list[compressedRotationData[0][0]] : this.list[this.rotationData[0][0]];
-                for(let k = remainingQuery.length - 1; k >= 0; k--){
-                    let [queryValues, amount] = remainingQuery[k];
-                    if(queryValues.includes(listValue)){
-                        amount--;
-                        if(amount <= 0){
-                            remainingQuery.splice(k,1);
-                        }else{
-                            remainingQuery[k][1] = amount;
+            // Update queries
+            if(remainingQueryAmount > 0){
+                let listValue = this.list[this.rotationData[this.rotationData.length-2]];
+                this.query.forEach( (queryArr, index) => {
+                    if(queryArr.includes(listValue)){
+                        remainingQuery[index]--;
+                        if(remainingQuery[index] === 0){
+                            remainingQueryAmount--;
                         }
                     }
-                }
+                });
             }
 
             // Rest of rotationData
             //================================================================================================================================================
             // For all other indexes, get the start time immediately after the previous start time.
-            for(let i = 1; (this.compress ? compressedRotationData.length < this.depth : i < this.depth) || remainingQuery.length > 0; i++){
+            for(let i = 1; (this.compress ? compressedRotationData.length/2 < this.depth : i < this.depth) || remainingQueryAmount > 0; i++){
                 let nextErinnTime = Infinity;
                 let nextServerTime = Infinity;
-                let lastRotationTime = this.rotationData[i-1][1];
+                let lastRotationTime = this.rotationData[(i-1)*2+1];
                 // First look through the Erinn times
                 if(this.erinnTimes.length > 0){
                     nextErinnTime = this.erinnTimes.find(rotationTime => rotationTime > lastEndInErinnDay);
@@ -582,37 +589,34 @@ export class RotateTimer extends Timer{
                     }
                 }
                 // Use the lowest time
-                this.rotationData.push([(this.rotation + i) % this.list.length,
-                                        (nextErinnTime < nextServerTime ? nextErinnTime : nextServerTime)]);
+                this.rotationData.push((this.rotation + i) % this.list.length,
+                                        (nextErinnTime < nextServerTime ? nextErinnTime : nextServerTime));
                 // Calculate times in the day
-                lastEndInErinnDay = (this.rotationData[i][1] + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
-                lastEndInServerDay = dateToMillisecondsAfterServerMidnight(new Date(this.rotationData[i][1]));
+                lastEndInErinnDay = (this.rotationData[i*2+1] + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
+                lastEndInServerDay = dateToMillisecondsAfterServerMidnight(new Date(this.rotationData[i*2+1]));
 
                 // If compress is not being used, update query.
-                // If compress is being used, only update query and store compressed data for this entry if the list value is not the same as the last recorded entry.
-                if(!this.compress || this.list[(this.rotation + i) % this.list.length] !== this.list[compressedRotationData[compressedRotationData.length - 1][0]]){
-                    if(this.compress) compressedRotationData.push(this.rotationData[this.rotationData.length - 1].slice());
+                // If compress is being used, only update query and store compressed data for this entry if the entry value is not the same as the last recorded entry's value.
+                if(!this.compress || this.list[(this.rotation + i) % this.list.length] !== this.list[compressedRotationData[compressedRotationData.length - 2]]){
+                    if(this.compress) compressedRotationData.push(this.rotationData[this.rotationData.length - 2], this.rotationData[this.rotationData.length - 1]);
 
-                    // Update query
-                    if(remainingQuery.length > 0){
+                    // Update queries
+                    if(remainingQueryAmount > 0){
                         let listValue = this.list[(this.rotation + i) % this.list.length];
-                        for(let k = remainingQuery.length - 1; k >= 0; k--){
-                            let [queryValues, amount] = remainingQuery[k];
-                            if(queryValues.includes(listValue)){
-                                amount--;
-                                if(amount <= 0){
-                                    remainingQuery.splice(k,1);
-                                }else{
-                                    remainingQuery[k][1] = amount;
+                        this.query.forEach( (queryArr, index) => {
+                            if(queryArr.includes(listValue)){
+                                remainingQuery[index]--;
+                                if(remainingQuery[index] === 0){
+                                    remainingQueryAmount--;
                                 }
                             }
-                        }
+                        });
                     }
                 }
             }
 
             // If compress is being used, rotationData becomes the compressed rotationData
-            if(this.compress) this.rotationData = compressedRotationData.map(individualRotationData => [individualRotationData[0], individualRotationData[1]]);
+            if(this.compress) this.rotationData = compressedRotationData.slice();
 
             // Update displays
             //================================================================================================================================================

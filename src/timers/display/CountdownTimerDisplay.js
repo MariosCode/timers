@@ -147,6 +147,8 @@ export class CountdownTimerDisplay extends TimerDisplay{
          */
         this.dataElements = [];
 
+        this.redraw = this.#redraw.bind(this);
+
         this.initializeElements();
         this.timer.attachDisplay(this);
     }
@@ -156,15 +158,15 @@ export class CountdownTimerDisplay extends TimerDisplay{
      * @param {Number[][]} newTimerData - 2D array with the entry index from the timer's list and its start time as unix epoch. First entry in this array is the currently active entry.
      */
     updateData(newTimerData){
-        // Make a clone of the rotationData array to safely modify it
-        let modifiedTimerData = newTimerData.map(individualEntryData => [individualEntryData[0], individualEntryData[1]]);
         // Apply query filter
         if(this.query.length > 0){
             let list = this.timer.list;
-            modifiedTimerData = modifiedTimerData.filter(entry => this.query.includes(list[entry[0]]));
+            for(let i = newTimerData.length-2; i >=0; i -= 2){
+                if(!this.query.includes(list[newTimerData[i]])) newTimerData.splice(i,2);
+            }
         }
         
-        this.updateDisplay(modifiedTimerData, false);
+        this.updateDisplay(newTimerData, false);
     }
 
     /**
@@ -175,13 +177,13 @@ export class CountdownTimerDisplay extends TimerDisplay{
      */
     updateDisplay(newTimerData, forceRedraw){
         // Cancel if updating display with this data is impossible
-        if(newTimerData.length < this.depth) return timerDisplayError(`Countdown type timer display failed an update due to invalid timerData length. Length expected: ${this.depth} timerData:`, newTimerData); 
+        if(newTimerData.length/2 < this.depth) return timerDisplayError(`Countdown type timer display failed an update due to invalid timerData length. Length expected: ${this.depth*2} timerData:`, newTimerData); 
         // Checking here if a countdown display needs to redraw would cause slight desyncs between timers due to varying Date.now values. It is better to use the timestamp provided by requestAnimationFrame.
-        this.timerData = newTimerData.map(individualEntryData => [individualEntryData[0], individualEntryData[1]]);
+        this.timerData = newTimerData.slice();
 
         // Redraw the display on the next animation frame if a redraw isn't already queued
         if(this.redrawID === null){
-            this.redrawID = requestAnimationFrame(this.redraw.bind(this));
+            this.redrawID = requestAnimationFrame(this.redraw);
         }
     }
 
@@ -192,20 +194,20 @@ export class CountdownTimerDisplay extends TimerDisplay{
      * Note: The display should be initialized with {@link CountdownTimerDisplay.initializeElements|initializeElements} before redrawing. redraw assumes the display's elements already exist.
      * @param {Number} timestamp - The timestamp provided by requestAnimationFrame
      */
-    redraw(timestamp){
+    #redraw(timestamp){
         // Loop through all entries
         for(let i = 0; i < this.depth; i++){
             // Update time
             if(this.dataElements[i*2]){
-                this.dataElements[i*2].text(TimerDisplay.formatTimeDuration( Math.floor(Math.max(this.timerData[i][1] - TIME_PAGE_LOAD - timestamp, 0)), this.timeFormat, this.verbose, this.hideLeading0, this.hideAll0));
+                this.dataElements[i*2].text(TimerDisplay.formatTimeDuration( Math.floor(Math.max(this.timerData[i*2+1] - TIME_PAGE_LOAD - timestamp, 0)), this.timeFormat, this.verbose, this.hideLeading0, this.hideAll0));
             }
             // Update entry value
             if(this.dataElements[i*2 + 1]){
-                this.dataElements[i*2 + 1].text(this.timer.list[this.timerData[i][0]]);
+                this.dataElements[i*2 + 1].text(this.timer.list[this.timerData[i*2]]);
             }
         }
         // Immediately queue a new redraw.
-        this.redrawID = requestAnimationFrame(this.redraw.bind(this));
+        this.redrawID = requestAnimationFrame(this.redraw);
     }
 
     /**

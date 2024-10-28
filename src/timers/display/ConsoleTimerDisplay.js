@@ -75,11 +75,11 @@ export class ConsoleTimerDisplay extends TimerDisplay{
         // Check if this timer needs to redraw its contents unless forceRedraw is true
         if(!forceRedraw){
             // Check if currently selected entry and the depth has not changed
-            if(newTimerData[0][0] === this.timerData[0][0] && newTimerData[0][1] === this.timerData[0][1] && newTimerData.length === this.timerData.length){
+            if(newTimerData[0] === this.timerData[0] && newTimerData[1] === this.timerData[1] && newTimerData.length === this.timerData.length){
                 return;
             }
         }
-        this.timerData = newTimerData.map(individualEntryData => [individualEntryData[0], individualEntryData[1]]);
+        this.timerData = newTimerData.slice();
 
         // Send the raw data to the JavaScript console
         console.log(`Timer ID ${this.timerId} update:`,this.timerData);
