@@ -79,7 +79,7 @@ export class ConsoleTimerDisplay extends TimerDisplay{
                 return;
             }
         }
-        this.timerData = newTimerData.slice();
+        this.timerData = newTimerData.map(individualEntryData => [individualEntryData[0], individualEntryData[1]]);
 
         // Send the raw data to the JavaScript console
         console.log(`Timer ID ${this.timerId} update:`,this.timerData);

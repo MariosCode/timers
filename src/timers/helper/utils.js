@@ -39,9 +39,10 @@ export const ERINN_TIME_OFFSET = TIME_PER_ERINN_HOUR*8;
  * to the console.
  * 
  * @param {String} warning - string describing the issue
+ * @param extraArgs - additional data to be logged to console as is
  */
-export function argumentError(warning) {
-	console.warn(`Argument Error: ${warning}`);
+export function argumentError(warning, ...extraArgs) {
+	console.warn(`Argument Error: ${warning}`, ...extraArgs);
     return null;
 }
 
@@ -54,9 +55,10 @@ export function argumentError(warning) {
  * to the console.
  * 
  * @param {String} warning - string describing the issue
+ * @param extraArgs - additional data to be logged to console as is
  */
-export function timerError(warning) {
-	console.warn(`Timer Error: ${warning}`);
+export function timerError(warning, ...extraArgs) {
+	console.warn(`Timer Error: ${warning}`, ...extraArgs);
     return null;
 }
 
@@ -69,9 +71,10 @@ export function timerError(warning) {
  * to the console.
  * 
  * @param {String} warning - string describing the issue
+ * @param extraArgs - additional data to be logged to console as is
  */
-export function timerDisplayError(warning) {
-	console.warn(`Timer Display Error: ${warning}`);
+export function timerDisplayError(warning, ...extraArgs) {
+	console.warn(`Timer Display Error: ${warning}`, ...extraArgs);
     return null;
 }
 
@@ -84,9 +87,10 @@ export function timerDisplayError(warning) {
  * to the console.
  * 
  * @param {String} warning - string describing the issue
+ * @param extraArgs - additional data to be logged to console as is
  */
-export function timerDisplayCreationError(warning) {
-	console.warn(`Timer Display Creation Error: ${warning}`);
+export function timerDisplayCreationError(warning, ...extraArgs) {
+	console.warn(`Timer Display Creation Error: ${warning}`, ...extraArgs);
     return null;
 }
 

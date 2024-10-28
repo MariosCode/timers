@@ -24,6 +24,10 @@ import { timerDisplayCreationError, timerDisplayError, camelCase } from "../help
  *  - timeClass: Adds the given CSS class name to each div containing the entry's time.
  *  - startAtEntry: Displays entries starting at this entry number. Useful when stringing multiple displays together for more control over styling. Default: 1
  *  - endAtEntry: Displays entries ending at this entry number. Useful when stringing multiple displays together for more control over styling. Default: Equal to the depth
+ * 
+ *  - filter: A filter to apply to data received by a timer. Valid filters are:
+ *      >- query: Filter the data supplied by the timer to only display entries whose value matches one of these query strings.
+ *          Note this will make the timer's depth dynamic. It will continue adding entries to its returned data until it reaches this display's depth number of queried entries.
  */
 export class ListTimerDisplay extends TimerDisplay{
     /**
@@ -98,6 +102,12 @@ export class ListTimerDisplay extends TimerDisplay{
          * @type {Number}
          */
         this.endAtEntry = validatedParameters.endAtEntry;
+
+        /**
+         * Filters timer data to only display entries whose value matches a string in query
+         * @type {String[]}
+         */
+        this.query = validatedParameters.query;
         
         /**
          * The original arguments provided from the settings element
@@ -132,7 +142,15 @@ export class ListTimerDisplay extends TimerDisplay{
      * @param {Number[][]} newTimerData - 2D array with the entry index from the timer's list and its start time as unix epoch. First entry in this array is the currently active entry.
      */
     updateData(newTimerData){
-        this.updateDisplay(newTimerData, false);
+        // Make a clone of the rotationData array to safely modify it
+        let modifiedTimerData = newTimerData.map(individualEntryData => [individualEntryData[0], individualEntryData[1]]);
+        // Apply query filter
+        if(this.query.length > 0){
+            let list = this.timer.list;
+            modifiedTimerData = modifiedTimerData.filter(entry => this.query.includes(list[entry[0]]))
+        }
+
+        this.updateDisplay(modifiedTimerData, false);
     }
 
     /**
@@ -154,7 +172,7 @@ export class ListTimerDisplay extends TimerDisplay{
         }
         // There is a new active entry or forceRedraw was true.
         // Store the updated data
-        this.timerData = newTimerData.slice();
+        this.timerData = newTimerData.map(individualEntryData => [individualEntryData[0], individualEntryData[1]]);
 
         // Redraw the display on the next animation frame if a redraw isn't already queued
         if(this.redrawID === null){

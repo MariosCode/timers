@@ -7,29 +7,45 @@
     <script type="module" src="../timers/main.js"></script>
   </head>
   <body>
-    <div class="make-timer-display">
-      today timer console display
-      <span class="settings">type=console depth=5 timer=todayTimer</span>
-    </div>
+    <div style="display:inline-block; vertical-align:top;">
+      <div class="make-timer-display">
+        today timer console display
+        <span class="settings">type=console depth=5 timer=todayTimer</span>
+      </div>
 
-    <br/>
+      <br/>
 
-    <div class="make-timer-display">
-      counting timer console display
-      <span class="settings">type=console timer=countingTimer</span>
-    </div>
+      <div class="make-timer-display">
+        counting timer console display
+        <span class="settings">type=console timer=countingTimer</span>
+      </div>
 
-    <br/>
+      <br/>
+      
+      <div class="make-timer-display">
+        <span class="settings">type=list depth=10 timer=countingTimer timeStyle={display:inline-block;padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ssL 12hour=true</span>
+      </div>
+
+      <br/>
     
-    <div class="make-timer-display">
-      <span class="settings">type=list depth=10 timer=countingTimer timeStyle={display:inline-block;padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ssL 12hour=true</span>
+      <div class="make-timer-display">
+        <span class="settings">type=countdown depth=50 timer=todayTimer timeStyle={display:inline-block;padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ss.sssS</span>
+      </div>
     </div>
 
-    <br/>
-   
-    <div class="make-timer-display">
-      <span class="settings">type=countdown depth=50 timer=todayTimer timeStyle={display:inline-block;padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ss.sssS</span>
+    
+    <div style="display:inline-block; vertical-align:top;">
+    
+      <div class="make-timer-display">
+        <span class="settings">type=countdown depth=20 timer=todayTimer timeStyle={display:inline-block;padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ssS hideLeading0=false query=Baltane</span>
+      </div>
     </div>
+
+
+
+
+
+
 
 
     

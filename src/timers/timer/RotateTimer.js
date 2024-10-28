@@ -65,6 +65,7 @@ export class RotateTimer extends Timer{
      * @param {Object.<String, String[]>} obj.args - The args object created from the element with the "settings" class
      * @param {String[]} obj.list - List created from all li elements in a ul or ol element
      * @param {Epoch} obj.epoch - Object containing the parsed epoch Date from the epoch provided in args
+     * @param {Boolean} obj.compress - Whether or not to apply the compress filter
      * @param {String[]} obj.changeAt - Parsed args.changeAt times
      * @param {Number[]} obj.erinnTimes - The Erinn times from args.changeAt sorted and stored as milliseconds after Erinn midnight
      * @param {Number[]} obj.serverTimes - The Server times from args.changeAt sorted and stored as milliseconds after Server midnight
@@ -74,7 +75,7 @@ export class RotateTimer extends Timer{
      * @param {Number} obj.timeout - Timeout ID for the next execution of updateRotation so it can be canceled
      * @private  
      */  
-    constructor({args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout}){
+    constructor({args, list, epoch, compress, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout}){
         if(!RotateTimer._allowConstructor) return timerError(`Rotate timers must be instantiated with RotateTimer.createInstance() instead of new RotateTimer()`);
         RotateTimer._allowConstructor = false;
 
@@ -86,6 +87,7 @@ export class RotateTimer extends Timer{
 
         // Modified parameter values
         this.epoch = epoch;
+        this.compress = compress;
         this.changeAt = changeAt;
 
         // New properties from parameters
@@ -115,10 +117,22 @@ export class RotateTimer extends Timer{
          * The {@link TimerDisplay|TimerDisplays} attached to the timer.
          */
         this.timerDisplays = new Map();
+
         /**
          * Determines how many arrays to include in rotationData. Determined by the highest depth in the TimerDisplays attached to this timer. Minimum 2.
          */
         this.depth = 2;
+
+        /**
+         * Overrides depth and keeps adding to rotationData until conditions of all queries are fulfilled.
+         * 
+         * Query data is organized as [ [Strings array, Number] ]: [ [strings (each being an exact match for a value in this.list)], number (the depth of the attached display with this query) ]
+         */
+        this.query = [];
+        /**
+         * Keeps track of changes to this.query to determine if rotationData needs to be updated
+         */
+        this.queryChanged = false;
     }
 
     /**  
@@ -134,6 +148,7 @@ export class RotateTimer extends Timer{
         if(!validatedParameters) return null;
 
         let epoch = validatedParameters.epoch;
+        let compress = validatedParameters.compress
         let changeAt = validatedParameters.updatedChangeAt;
         let erinnTimes = validatedParameters.erinnTimes;
         let serverTimes = validatedParameters.serverTimes;
@@ -147,7 +162,7 @@ export class RotateTimer extends Timer{
         
         // Create and return the rotate timer instance
         RotateTimer._allowConstructor = true;
-        return new RotateTimer({args, list, epoch, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout});
+        return new RotateTimer({args, list, epoch, compress, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout});
     }
 
     attachDisplay(display){
@@ -158,8 +173,14 @@ export class RotateTimer extends Timer{
         // Add to the timerDisplays Map
         this.timerDisplays.set(display, true);
 
-        // If this is the first TimerDisplay added to the Map, begin the rotations. Also update rotation if the depth has changed.
-        if(this.timerDisplays.size === 1 || this.depth < display.depth){
+        // Add the display's query, if there is one
+        if(display.query && display.query.length > 0){
+            this.query.push([ display.query , display.depth ]);
+            this.queryChanged = true;
+        }
+
+        // If this is the first TimerDisplay added to the Map, begin the rotations. Also update rotation if the depth has changed or this display uses a query.
+        if(this.timerDisplays.size === 1 || this.depth < display.depth || (display.query && display.query.length > 0)){
             // Update depth if needed
             this.depth = (this.depth < display.depth ? display.depth : this.depth);
             this.updateRotation();
@@ -174,13 +195,17 @@ export class RotateTimer extends Timer{
         if(!(this.timerDisplays.has(display))) return timerError("Failed to detach display due to the provided display not being attached.");
 
         this.timerDisplays.delete(display);
-        // If this is the last TimerDisplay, stop the rotations and reset the depth.
+
+        // If this is the last TimerDisplay, stop the rotations and reset the depth and query.
         if(this.timerDisplays.size === 0){
             clearTimeout(this.timeout);
             this.depth = 2;
-        // Otherwise, recalculate the depth if necessary.
+            this.query = [];
+            this.queryChanged = true;
+        // Otherwise, recalculate the depth and query if necessary.
         }else{
             if(display.depth === this.depth) this.recalculateDepth();
+            if(display.query && display.query.length > 0) this.recalculateQuery();
         }
     }
 
@@ -188,6 +213,14 @@ export class RotateTimer extends Timer{
         this.depth = 2;
         this.timerDisplays.forEach((value, display) => {
             this.depth = (this.depth > display.depth ? this.depth : display.depth);
+        });
+    }
+
+    recalculateQuery(){
+        this.query = [];
+        this.queryChanged = true;
+        this.timerDisplays.forEach((value, display) => {
+            if(display.query && display.query.length > 0) this.query.push([ display.query , display.depth ]);
         });
     }
 
@@ -220,14 +253,18 @@ export class RotateTimer extends Timer{
         // Validate list
         if(list.length < 1) return argumentError('Rotate type timers must have at least 1 item in its list.');
 
-        // Validate changeAt/changeEvery
-        if(!('changeAt' in args) && !('changeEvery' in args)) {
-            return argumentError('Rotate type timers require either changeAt or changeEvery.');
-        } else if('changeAt' in args && 'changeEvery' in args) {
-            return argumentError('Rotate type timers cannot take both changeAt and changeEvery.');
-        } else if('changeEvery' in args && args.changeEvery.length > 1) {
-            return argumentError('Rotate type timers can only have one changeEvery.');
+        // Validate filters
+        let compress = false;
+        if('compress' in args){
+            if(args.compress.length > 1) return argumentError('Rotate type timers can only have 1 value for compress.');
+            if(args.compress[0].toLowerCase() !== 'true' && args.compress[0].toLowerCase() !== 'false') return argumentError('compress must be "true" or "false".');
+            if(args.compress[0].toLowerCase() === 'true') compress = true;
         }
+
+        // Validate changeAt/changeEvery
+        if(!('changeAt' in args) && !('changeEvery' in args)) return argumentError('Rotate type timers require either changeAt or changeEvery.');
+        else if('changeAt' in args && 'changeEvery' in args) return argumentError('Rotate type timers cannot take both changeAt and changeEvery.');
+        else if('changeEvery' in args && args.changeEvery.length > 1) return argumentError('Rotate type timers can only have one changeEvery.');
 
         // Assign changeEvery/changeAt time
         let changeEvery = 'changeEvery' in args ? args.changeEvery.slice() : null;
@@ -280,7 +317,7 @@ export class RotateTimer extends Timer{
             if(changeEveryDuration.milliseconds < 1) return argumentError(`Rotate timers with a changeEvery can not have a duration of 0ms or below. changeEvery value: ${changeEvery[0]}`);
         }
 
-        return {epoch, updatedChangeAt, erinnTimes, serverTimes, changeEveryDuration};
+        return {epoch, compress, updatedChangeAt, erinnTimes, serverTimes, changeEveryDuration};
     }
 
     /**  
@@ -296,14 +333,44 @@ export class RotateTimer extends Timer{
         let currentTime = Date.now();
         this.rotation = Math.floor((currentTime - epochTime) / this.changeEveryDuration.milliseconds);
 
-        // If rotation or depth changed, update the TimerDisplays
-        if(lastRotation !== this.rotation || this.rotationData.length < this.depth){
-            // TODO: Implement the compression filter. Create a new array using compression and then compare it to rotationData to determine if displays need to be updated. If list value from rotation of first index of first array matches that of second array, copy the first array's first index over to second array to keep the start time of it.
+        // If rotation, depth, or query changed: Update the TimerDisplays
+        if(lastRotation !== this.rotation || this.rotationData.length < this.depth || this.queryChanged){
+            // Store previous active entry. Needed if compress filter is used.
+            let previousActiveEntry = [];
+            if(this.rotationData.length > 0) previousActiveEntry = this.rotationData[0].slice();
             // Clear rotationData and recalculate all entries
             this.rotationData = [];
-            for(let i = 0; i < this.depth; i++){
-                this.rotationData.push([(this.rotation + i) % this.list.length,
-                    epochTime + ((this.rotation + i) * this.changeEveryDuration.milliseconds)]);
+            // Keep track of queries that still need to be fulfilled
+            let remainingQuery = this.query.map(individualQuery => [individualQuery[0].slice(), individualQuery[1]]);
+            // Loop until depth is reached and no query remains unfulfilled
+            for(let i = 0; this.rotationData.length < this.depth || remainingQuery.length > 0; i++){
+                // If the compress filter is being used and the currently active entry hasn't changed, keep it as it is so the start time doesn't change.
+                if(this.compress && i === 0 && previousActiveEntry.length > 0 && this.list[this.rotation % this.list.length] === this.list[previousActiveEntry[0]]){
+                    this.rotationData.push(previousActiveEntry.slice());
+                }else{
+                    // Continue to the next loop if compression is on and the last recorded entry has the same list value as this loop's entry.
+                    if(this.compress && i !== 0){
+                        if(this.list[this.rotationData[this.rotationData.length-1][0]] === this.list[(this.rotation + i) % this.list.length]) continue;
+                    }
+                    // Record this entry
+                    this.rotationData.push([(this.rotation + i) % this.list.length,
+                        epochTime + ((this.rotation + i) * this.changeEveryDuration.milliseconds)]);
+                }
+                // Update queries
+                if(remainingQuery.length > 0){
+                    let listValue = this.list[this.rotationData[this.rotationData.length-1][0]];
+                    for(let k = remainingQuery.length - 1; k >= 0; k--){
+                        let [queryValues, amount] = remainingQuery[k];
+                        if(queryValues.includes(listValue)){
+                            amount--;
+                            if(amount <= 0){
+                                remainingQuery.splice(k,1);
+                            }else{
+                                remainingQuery[k][1] = amount;
+                            }
+                        }
+                    }
+                }
             }
             // Update all attached TimerDisplays with new rotationData
             this.updateAllDisplays();
@@ -410,16 +477,23 @@ export class RotateTimer extends Timer{
 
         // First rotationData index
         //================================================================================================================================================
-        // If rotation or depth changed, update the TimerDisplays
-        if(lastRotation !== this.rotation || this.rotationData.length < this.depth){
-            // TODO: Implement the compression filter. Create a new array using compression and then compare it to rotationData to determine if displays need to be updated. If list value from rotation of first index of first array matches that of second array, copy the first array's first index over to second array to keep the start time of it.
-            // Clear rotationData and recalculate all entries
-            this.rotationData = [];
+        // If rotation, depth, or query changed: Update the TimerDisplays
+        if(lastRotation !== this.rotation || this.rotationData.length < this.depth || this.queryChanged){
+            // Store previous active entry. Needed if compress filter is used.
+            let previousActiveEntry = [];
+            if(this.rotationData.length > 0) previousActiveEntry = this.rotationData[0].slice();
+            // rotationData is needed for calculations, so store compressed data separately for now.
+            let compressedRotationData = [];
+            // Keep track of queries that still need to be fulfilled
+            let remainingQuery = this.query.map(individualQuery => [individualQuery[0].slice(), individualQuery[1]]);;
             // Keep track of last time added to rotationData
             // How many milliseconds into the Erinn day the last time was at
             let lastEndInErinnDay = 0;
             // How many milliseconds into the Server day the last time was at
             let lastEndInServerDay = 0;
+
+            // Clear rotationData and recalculate all entries
+            this.rotationData = [];
 
             // For index 0, get the start time immediately at or before the current time.
             let lastErinnTime = 0;
@@ -453,10 +527,35 @@ export class RotateTimer extends Timer{
             lastEndInErinnDay = (this.rotationData[0][1] + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
             lastEndInServerDay = dateToMillisecondsAfterServerMidnight(new Date(this.rotationData[0][1]));
 
+            // If compress is being used, store compressed data for the first entry
+            if(this.compress){
+                if(previousActiveEntry.length > 0 && this.list[this.rotation % this.list.length] === this.list[previousActiveEntry[0]]){
+                    compressedRotationData.push(previousActiveEntry.slice());
+                }else{
+                    compressedRotationData.push(this.rotationData[0].slice());
+                }
+            }
+
+            // Update query
+            if(remainingQuery.length > 0){
+                let listValue = this.compress ? this.list[compressedRotationData[0][0]] : this.list[this.rotationData[0][0]];
+                for(let k = remainingQuery.length - 1; k >= 0; k--){
+                    let [queryValues, amount] = remainingQuery[k];
+                    if(queryValues.includes(listValue)){
+                        amount--;
+                        if(amount <= 0){
+                            remainingQuery.splice(k,1);
+                        }else{
+                            remainingQuery[k][1] = amount;
+                        }
+                    }
+                }
+            }
+
             // Rest of rotationData
             //================================================================================================================================================
             // For all other indexes, get the start time immediately after the previous start time.
-            for(let i = 1; i < this.depth; i++){
+            for(let i = 1; (this.compress ? compressedRotationData.length < this.depth : i < this.depth) || remainingQuery.length > 0; i++){
                 let nextErinnTime = Infinity;
                 let nextServerTime = Infinity;
                 let lastRotationTime = this.rotationData[i-1][1];
@@ -488,7 +587,32 @@ export class RotateTimer extends Timer{
                 // Calculate times in the day
                 lastEndInErinnDay = (this.rotationData[i][1] + ERINN_TIME_OFFSET) % TIME_PER_ERINN_DAY;
                 lastEndInServerDay = dateToMillisecondsAfterServerMidnight(new Date(this.rotationData[i][1]));
+
+                // If compress is not being used, update query.
+                // If compress is being used, only update query and store compressed data for this entry if the list value is not the same as the last recorded entry.
+                if(!this.compress || this.list[(this.rotation + i) % this.list.length] !== this.list[compressedRotationData[compressedRotationData.length - 1][0]]){
+                    if(this.compress) compressedRotationData.push(this.rotationData[this.rotationData.length - 1].slice());
+
+                    // Update query
+                    if(remainingQuery.length > 0){
+                        let listValue = this.list[(this.rotation + i) % this.list.length];
+                        for(let k = remainingQuery.length - 1; k >= 0; k--){
+                            let [queryValues, amount] = remainingQuery[k];
+                            if(queryValues.includes(listValue)){
+                                amount--;
+                                if(amount <= 0){
+                                    remainingQuery.splice(k,1);
+                                }else{
+                                    remainingQuery[k][1] = amount;
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
+            // If compress is being used, rotationData becomes the compressed rotationData
+            if(this.compress) this.rotationData = compressedRotationData.map(individualRotationData => [individualRotationData[0], individualRotationData[1]]);
 
             // Update displays
             //================================================================================================================================================

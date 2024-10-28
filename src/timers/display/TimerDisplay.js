@@ -428,6 +428,18 @@ export class TimerDisplay{
             endAtEntry = Math.min( Math.max(Number(args.endAtEntry[0]), startAtEntry) , depth );
         }
 
-        return {timerId, depth, timer, timeFormat, entryFormat, entryStyle, valueStyle, timeStyle, entryClass, valueClass, timeClass, startAtEntry, endAtEntry};
+        // Validate query
+        let query = [];
+        if('query' in args){
+            // Every string in query must exist in the timer's list.
+            let invalidEntryValue = [];
+            args.query.forEach(str => {
+                if(timer.list.indexOf(str) === -1) invalidEntryValue.push(str);
+            });
+            if(invalidEntryValue.length > 0) return timerDisplayCreationError(`query contains ${(invalidEntryValue.length > 1 ? 'multiple entry values' : 'an entry value')} not present in the timer's list: "${invalidEntryValue.join('", "')}".`);
+            query = args.query.slice();
+        }
+
+        return {timerId, depth, timer, timeFormat, entryFormat, entryStyle, valueStyle, timeStyle, entryClass, valueClass, timeClass, startAtEntry, endAtEntry, query};
     }
 }
