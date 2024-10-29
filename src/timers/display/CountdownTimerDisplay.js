@@ -1,6 +1,6 @@
 import { TimerDisplay } from "./TimerDisplay.js";
 import { Timer } from "../timer/Timer.js";
-import { TIME_PAGE_LOAD, timerDisplayCreationError, timerDisplayError, camelCase } from "../helper/utils.js";
+import { TIME_PAGE_LOAD, timerDisplayCreationError, timerDisplayError, camelCase, TIME_PER_ERINN_MINUTE, TIME_PER_ERINN_HOUR, TIME_PER_ERINN_DAY } from "../helper/utils.js";
 
 /**  
  * @class CountdownTimerDisplay
@@ -92,6 +92,13 @@ export class CountdownTimerDisplay extends TimerDisplay{
         this.timeFormat = validatedParameters.timeFormat;
 
         /**
+         * The lowest unit of time present in the time format above. Used to only update clock when necessary.
+         * This can be "h", "m", "s", or ".s" for milliseconds
+         * @type {String}
+         */
+        this.precision = validatedParameters.precision;
+
+        /**
          * The format to use for each displayed entry. Example: "{%t %v}"
          * @type {String}
          */
@@ -146,8 +153,23 @@ export class CountdownTimerDisplay extends TimerDisplay{
          * @type {JQuery<HTMLElement>[]}
          */
         this.dataElements = [];
+        
+        /**
+         * The last time in milliseconds since unix epoch the clock updated its contents (to prevent excessive updates)
+         * @type {Number}
+         */
+        this.lastUpdate = 0;
+        
+        /**
+         * The next scheduled update in milliseconds since unix epoch (to deal with timeout inaccuracies causing an early update)
+         * @type {Number}
+         */
+        this.nextUpdate = 0;
+
+        this.timeout = null;
 
         this.redraw = this.#redraw.bind(this);
+        this.queueNextUpdate = this.#queueNextUpdate.bind(this);
 
         this.initializeElements();
         this.timer.attachDisplay(this);
@@ -188,6 +210,15 @@ export class CountdownTimerDisplay extends TimerDisplay{
     }
 
     /**
+     * Queue the next requestAnimationFrame. Meant to be used with setTimeout.
+     */
+    #queueNextUpdate(){
+        if(this.redrawID === null){
+            this.redrawID = requestAnimationFrame(this.redraw);
+        }
+    }
+
+    /**
      * Redraws the HTML contents of this display.
      * This will recalculate what each entry time and value should be displaying.\
      * 
@@ -196,6 +227,25 @@ export class CountdownTimerDisplay extends TimerDisplay{
      */
     #redraw(timestamp){
         timestamp = Math.floor(timestamp);
+        // Determine the current time
+        let currTime = TIME_PAGE_LOAD + timestamp;
+        // Determine precision in milliseconds
+        let precision = 1;
+        // Erinn time
+        if(this.timeFormat[this.timeFormat.length - 1] === "E"){
+            precision = (this.precision === 's' ? Math.floor(TIME_PER_ERINN_MINUTE/60) : 
+                        (this.precision === 'm' ? TIME_PER_ERINN_MINUTE : 
+                        (this.precision === 'h' ? TIME_PER_ERINN_HOUR : TIME_PER_ERINN_DAY)));
+        // Real time
+        }else{
+            precision = (this.precision === '.s' ? 1 : 
+                        (this.precision === 's' ? 1000 : 
+                        (this.precision === 'm' ? 60000 : 
+                        (this.precision === 'h' ? 3600000 : 86400000))));
+        }
+        // Determine when the next scheduled time should be, minimum 1ms from now
+        this.nextUpdate = Math.max(currTime + precision - (currTime % precision) , currTime + 1);
+
         // Loop through all entries
         for(let i = 0; i < this.depth; i++){
             // Update time
@@ -207,8 +257,10 @@ export class CountdownTimerDisplay extends TimerDisplay{
                 this.dataElements[i*2 + 1].text(this.timer.list[this.timerData[i*2]]);
             }
         }
-        // Immediately queue a new redraw.
-        this.redrawID = requestAnimationFrame(this.redraw);
+        // Queue the next redraw at the next scheduled time
+        clearTimeout(this.timeout);
+        this.redrawID = null;
+        this.timeout = setTimeout(this.queueNextUpdate, this.nextUpdate - currTime);
     }
 
     /**
