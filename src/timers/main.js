@@ -2,6 +2,7 @@ import { RotateTimer } from './timer/RotateTimer.js'
 import { ConsoleTimerDisplay } from './display/ConsoleTimerDisplay.js';
 import { ListTimerDisplay } from './display/ListTimerDisplay.js';
 import { CountdownTimerDisplay } from './display/CountdownTimerDisplay.js';
+import { ClockTimerDisplay } from './display/ClockTimerDisplay.js';
 import { parseSettings,
         timerDisplayError
     } from './helper/utils.js';
@@ -66,6 +67,7 @@ function displayFactory(elem, args){
     if(args.type[0] === 'console') return new ConsoleTimerDisplay(args);
     else if(args.type[0] === 'list') return new ListTimerDisplay(elem, args);
     else if(args.type[0] === 'countdown') return new CountdownTimerDisplay(elem, args);
+    else if(args.type[0] === 'clock') return new ClockTimerDisplay(elem, args);
     else return timerDisplayError(`Timer display type "${args.type}" is an unknown display type.`);
 }
 

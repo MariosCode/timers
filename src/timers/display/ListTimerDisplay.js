@@ -294,15 +294,6 @@ export class ListTimerDisplay extends TimerDisplay{
         // Validate all args common to most displays
         let returnObject = TimerDisplay.argValidationAndConversion(args , "list");
         if(!returnObject) return null;
-
-        // Validate 12hour
-        returnObject.is12hour = false;
-        if('12hour' in args){
-            if(args['12hour'].length > 1) return timerDisplayCreationError('12hour can not have more than 1 value.');
-            if(args['12hour'][0].toLowerCase() === 'false') returnObject.is12hour = false;
-            else if(args['12hour'][0].toLowerCase() === 'true') returnObject.is12hour = true;
-            else return timerDisplayCreationError('12hour must be true or false.');
-        }
         
         return returnObject;
     }

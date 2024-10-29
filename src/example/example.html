@@ -7,21 +7,7 @@
     <script type="module" src="../timers/main.js"></script>
   </head>
   <body>
-    <div style="display:inline-block; vertical-align:top;">
-      <div class="make-timer-display">
-        today timer console display
-        <span class="settings">type=console depth=5 timer=todayTimer</span>
-      </div>
-
-      <br/>
-
-      <div class="make-timer-display">
-        counting timer console display
-        <span class="settings">type=console timer=countingTimer</span>
-      </div>
-
-      <br/>
-      
+    <div style="display:inline-block; vertical-align:top; width: 190px; text-wrap: nowrap; overflow:hidden;">
       <div class="make-timer-display">
         <span class="settings">type=list depth=10 timer=countingTimer timeStyle={display:inline-block;padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ssL 12hour=true</span>
       </div>
@@ -29,15 +15,27 @@
       <br/>
     
       <div class="make-timer-display">
-        <span class="settings">type=countdown depth=50 timer=todayTimer timeStyle={display:inline-block;padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ss.sssS</span>
+        <span class="settings">type=countdown depth=50 timer=todayTimer timeStyle={display:inline-block; padding-right:10px; width: 75px; text-align:right;} valueStyle={display:inline-block} timeFormat=h:mm:ssS</span>
       </div>
     </div>
 
     
     <div style="display:inline-block; vertical-align:top;">
-    
       <div class="make-timer-display">
-        <span class="settings">type=countdown depth=20 timer=todayTimer timeStyle={display:inline-block;padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ssS hideLeading0=false query=Baltane</span>
+        <span class="settings">type=countdown depth=20 timer=todayTimer timeStyle={display:inline-block; padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ssS hideLeading0=false query=Baltane</span>
+      </div>
+    </div>
+
+    
+    <div style="display:inline-block; vertical-align:top;">
+      <div class="make-timer-display">
+        <span class="settings">type=clock timeStyle={display:inline-block;padding-right:10px;} 12hour=true timeFormat=h:mm:ssL entryFormat={Local: %t}</span>
+      </div>
+      <div class="make-timer-display">
+        <span class="settings">type=clock timeStyle={display:inline-block;padding-right:10px;} 12hour=true timeFormat=h:mm:ssS entryFormat={Server: %t}</span>
+      </div>
+      <div class="make-timer-display">
+        <span class="settings">type=clock timeStyle={display:inline-block;padding-right:10px;} 12hour=true timeFormat=h:mmE entryFormat={Erinn: %t}</span>
       </div>
     </div>
 

@@ -195,6 +195,7 @@ export class CountdownTimerDisplay extends TimerDisplay{
      * @param {Number} timestamp - The timestamp provided by requestAnimationFrame
      */
     #redraw(timestamp){
+        timestamp = Math.floor(timestamp);
         // Loop through all entries
         for(let i = 0; i < this.depth; i++){
             // Update time

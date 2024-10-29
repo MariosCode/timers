@@ -83,9 +83,11 @@ export class TimerDisplay{
             // Get time in current day
             millisecondsParam = millisecondsParam % TIME_PER_ERINN_DAY;
             // Extract units of time from the milliseconds
-            hours = millisecondsParam % TIME_PER_ERINN_HOUR;
-            minutes = millisecondsParam % TIME_PER_ERINN_MINUTE;
-            seconds = millisecondsParam % Math.floor(TIME_PER_ERINN_MINUTE/60); // Math.floor for future proofing, code should handle a change in TIME_PER_ERINN_MINUTE without issue
+            hours = Math.floor(millisecondsParam / TIME_PER_ERINN_HOUR);
+            millisecondsParam = millisecondsParam % TIME_PER_ERINN_HOUR;
+            minutes = Math.floor(millisecondsParam / TIME_PER_ERINN_MINUTE);
+            millisecondsParam = millisecondsParam % TIME_PER_ERINN_MINUTE;
+            seconds = Math.floor(millisecondsParam / Math.floor(TIME_PER_ERINN_MINUTE/60)); // Math.floor for future proofing, code should handle a change in TIME_PER_ERINN_MINUTE without issue
         }else{
             return timerDisplayError(`formatTimeClock is unable to use format "${format}". The last character of the string should be S (Server time), L (local time), or E (Erinn time).`);
         }
@@ -333,14 +335,17 @@ export class TimerDisplay{
         displayType = displayType.toLowerCase();
 
         // Validate timer id
-        if(!('timer' in args)) return timerDisplayCreationError('"timer" setting is not set to a timer element\'s id.');
-        if(args.timer.length > 1) return timerDisplayCreationError('"timer" setting should only have 1 value.');
-        if($(`#${args.timer}`).length < 0) return timerDisplayCreationError(`"timer" setting must be set to a valid timer element\'s id. Could not find element with id "${args.timer}".`);
-        if( !( $($(`#${args.timer}`)[0]).data('timer') instanceof Timer ) ) return timerDisplayCreationError(`Failed to attach to a timer due to the provided "timer" element id not being an element with an instance of Timer or its subclasses.`);
-
-        // 1 Timer provided and it is valid. Store it to attach later.
-        let timerId = args.timer;
-        let timer = $($(`#${args.timer}`)[0]).data('timer');
+        let timerId = '';
+        let timer = null;
+        if(displayType !== 'clock'){
+            if(!('timer' in args)) return timerDisplayCreationError('"timer" setting is not set to a timer element\'s id.');
+            if(args.timer.length > 1) return timerDisplayCreationError('"timer" setting should only have 1 value.');
+            if($(`#${args.timer}`).length < 0) return timerDisplayCreationError(`"timer" setting must be set to a valid timer element\'s id. Could not find element with id "${args.timer}".`);
+            if( !( $($(`#${args.timer}`)[0]).data('timer') instanceof Timer ) ) return timerDisplayCreationError(`Failed to attach to a timer due to the provided "timer" element id not being an element with an instance of Timer or its subclasses.`);
+            // 1 Timer provided and it is valid. Store it to attach later.
+            timerId = args.timer;
+            timer = $($(`#${args.timer}`)[0]).data('timer');
+        }
 
         // Validate depth. 1 is default and minimum across all displays.
         let depth = 1;
@@ -360,11 +365,12 @@ export class TimerDisplay{
         // Default time format
         let timeFormat = 'h:mm:ssS';
         if(displayType === 'list') timeFormat = 'h:mm:ssS'; // Change this to change default for list displays
+        if(displayType === 'clock') timeFormat = 'h:mm:ssS'; // Change this to change default for clock displays
         if(displayType === 'countdown') timeFormat = 'h:mm:ssS'; // Change this to change default for countdown displays
         if('timeFormat' in args){
             if(args.timeFormat.length > 1) return timerDisplayCreationError('Timer displays can not have more than 1 timeFormat.');
 
-            timeFormat = args.timeFormat[0];
+            timeFormat = `${args.timeFormat[0].slice(0,-1).toLowerCase()}${args.timeFormat[0][args.timeFormat[0].length - 1].toUpperCase()}`;
             // Valid patterns
             let validFormatReal = /^(hh|h)(:mm(:ss(\.sss)?)?)?$/;
             let validFormatErinn = /^(hh|h)(:mm(:ss)?)?$/;
@@ -374,7 +380,7 @@ export class TimerDisplay{
                 validFormatErinn = /^(?:([d]+)(?::|$))?(?:([h]+)(?::|$))?(?:([m]+)(?::|$))?([s]+$)?$/;
             }
             // Get last letter in time format
-            let formatType = timeFormat[timeFormat.length - 1].toUpperCase();
+            let formatType = timeFormat[timeFormat.length - 1];
 
             // Validate pattern
             if(formatType === 'S' || formatType === 'L'){
@@ -389,8 +395,24 @@ export class TimerDisplay{
             timeFormat = args.timeFormat[0];
         }
 
+        // Determine precision of time from timeFormat
+        let precision = (timeFormat.includes('.s') ? '.s' : 
+                        (timeFormat.includes('s') ? 's' : 
+                        (timeFormat.includes('m') ? 'm' : 
+                        (timeFormat.includes('h') ? 'h' : 'd'))));
+
+        // Validate 12hour
+        let is12hour = false;
+        if('12hour' in args){
+            if(args['12hour'].length > 1) return timerDisplayCreationError('12hour can not have more than 1 value.');
+            if(args['12hour'][0].toLowerCase() === 'false') is12hour = false;
+            else if(args['12hour'][0].toLowerCase() === 'true') is12hour = true;
+            else return timerDisplayCreationError('12hour must be true or false.');
+        }
+
         // Validate entryFormat
         let entryFormat = '%t %v';
+        if(displayType === 'clock') entryFormat = '%t';
         if('entryFormat' in args){
             if(args.entryFormat.length > 1) return timerDisplayCreationError('entryFormat can not have more than 1 value.');
             if(args.entryFormat[0].split('%t').length > 2) return timerDisplayCreationError('entryFormat can not have more than 1 instance of "%t".');
@@ -440,6 +462,6 @@ export class TimerDisplay{
             query = args.query.slice();
         }
 
-        return {timerId, depth, timer, timeFormat, entryFormat, entryStyle, valueStyle, timeStyle, entryClass, valueClass, timeClass, startAtEntry, endAtEntry, query};
+        return {timerId, depth, timer, timeFormat, precision, is12hour, entryFormat, entryStyle, valueStyle, timeStyle, entryClass, valueClass, timeClass, startAtEntry, endAtEntry, query};
     }
 }
