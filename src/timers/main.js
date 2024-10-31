@@ -45,19 +45,20 @@ function initializeTimers(){
         // Change the class
         $this.removeClass('make-timer-display').addClass('timer-display');
     
+        // Create the display
         $this.data('display', displayFactory(this, args));
     });
 }
 
 function timerFactory(args, list){
     if(!('type' in args)){
-        // Timer type would be required if more Timer classes were created in the future
+        // Timer type would be required if more Timer subclasses were created in the future
     }
     return RotateTimer.createInstance(args, list);
 }
 
 function displayFactory(elem, args){
-    // Perform argument validations required to perform the correct createInstance
+    // Perform argument validations required to find the correct createInstance
     if(!('type' in args)) return timerDisplayError('Timer displays require a type.');
     if(args.type.length > 1) return timerDisplayError('Timer displays can only have one type.');
 

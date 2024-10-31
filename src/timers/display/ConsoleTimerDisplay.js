@@ -11,28 +11,26 @@ import { Timer } from '../timer/Timer.js';
  * 
  * Optionally in settings, a console timer display may have the following:
  * 
- * - depth: A number for how many entries the timer should give to this display. The first entry given is the currently active entry in the timer. Default: 2
+ * - depth: A number for how many entries the timer should give to this display. The first entry given is the currently active entry in the timer. Default: 1
+ * 
+ * @param args - The args object created from the settings
  */
 export class ConsoleTimerDisplay extends TimerDisplay{
-    /**
-     * Constructor for {@link ConsoleTimerDisplay}
-     * @param args - The args object created from the element with the "settings" class
-     */
     constructor(args){
         super();
 
-        // Validate and convert the given parameters into the properties used by this class.
+        // Validate and convert the args into the values used by this class.
         let validatedParameters = ConsoleTimerDisplay.#validateParameters(args);
         if(!validatedParameters) return null;
 
         /**
-         * The ID on the HTML element containing the Timer to attach this display to
+         * The ID on the HTML element containing the Timer this display will attach to
          * @type {String}
          */
         this.timerId = validatedParameters.timerId
 
         /**
-         * The minimum number of scheduled entries the Timer must give to {@link ConsoleTimerDisplay.updateData|updateData}
+         * The minimum number of entries the Timer must give to {@link ConsoleTimerDisplay.updateData|updateData}
          * @type {Number}
          */
         this.depth = validatedParameters.depth
@@ -51,7 +49,7 @@ export class ConsoleTimerDisplay extends TimerDisplay{
 
         /**
          * Data obtained from the attached timer
-         * @type {Number[][]}
+         * @type {Number[]}
          */
         this.timerData = [];
 
@@ -60,16 +58,15 @@ export class ConsoleTimerDisplay extends TimerDisplay{
 
     /**
      * Handles udpated data from a Timer. Note a data update does not mean the data actually changed since the last update.
-     * @param {Number[][]} newTimerData - 2D array with the entry index from the timer's list and its start time as unix epoch. First entry in this array is the currently active entry.
+     * @param {Number[]} newTimerData - An array with the entry index from the timer's list and its start time as unix epoch. First 2 numbers in this array are for the currently active entry.
      */
     updateData(newTimerData){
         this.updateDisplay(newTimerData, true);
     }
 
     /**
-     * @param {Number[][]} newTimerData - 2D array with the entry index from the timer's list and its start time as unix epoch. First entry in this array is the currently active entry.
+     * @param {Number[]} newTimerData - An array with the entry index from the timer's list and its start time as unix epoch. First 2 numbers in this array are for the currently active entry.
      * @param {Boolean} forceRedraw - Whether or not to force a redraw even if there is no change in data.
-     * @returns 
      */
     updateDisplay(newTimerData, forceRedraw){
         // Check if this timer needs to redraw its contents unless forceRedraw is true
@@ -85,19 +82,15 @@ export class ConsoleTimerDisplay extends TimerDisplay{
         console.log(`Timer ID ${this.timerId} update:`,this.timerData);
     }
 
+    /**
+     * Take the settings and turns it into the correct values used by this class, or returns null if a setting is invalid
+     * @param {Object} args - The original settings provided
+     */
     static #validateParameters(args){
-        if(!('timer' in args)) return timerDisplayError('Console type timer displays need to have "timer" setting set to a timer element\'s id.');
-        if(args.timer.length > 1) return timerDisplayError('Timer displays can not have multiple timers attached.');
-        if($(`#${args.timer}`).length < 0) return timerDisplayError(`Console type timer displays need to have "timer" setting set to a valid timer element\'s id. Could not find element with id "${args.timer}".`);
-        if( !( $($(`#${args.timer}`)[0]).data('timer') instanceof Timer ) ) return timerDisplayError(`Failed to attach to timer due to the provided timer not being an instance of Timer or its subclasses.`);
-
-        // 1 Timer provided and it is valid. Store it to attach later.
-        let timerId = args.timer;
-        let timer = $($(`#${args.timer}`)[0]).data('timer');
-
-        // Validate depth. 1 minimum.
-        let depth = Number(args.depth) ? Math.max(Number(args.depth), 1) : 1;
-
-        return {timerId, depth, timer};
+        // Validate all args common to most displays
+        let returnObject = TimerDisplay.argValidationAndConversion(args , "console");
+        if(!returnObject) return null;
+        
+        return returnObject;
     }
 }

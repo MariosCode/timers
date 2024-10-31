@@ -16,7 +16,7 @@ import { TIME_PAGE_LOAD, timerDisplayCreationError, timerDisplayError, camelCase
  *  - verbose: true or false. If true, time is displayed with english words. For example "6 days, 10 hours, 58 minutes, 1 second". Default: false
  *  - timeFormat: How to format the duration of time displayed. The number of letters is the minimum digit count (padded with 0s). See {@link TimerDisplay.formatTimeDuration} Default: h:mm:ssS
  *      >- hideLeading0: true or false. Removes leading zeroes from the formatted time. For example, 0:10:0:10S with the d:hh:mm:ssS format would display as 10:00:10. Default: true
- *      >- hideAll0: true or false. Removes all zeroes from the formatted time. For example, 0:1:0:10S with the "d:hh:mm:ssS" format would be "1 hour, 10 seconds". Default: false
+ *      >- hideAll0: true or false. Removes all zeroes from the formatted time. For example, 0:1:0:10S with the "d:hh:mm:ssS" format and verbose would be "1 hour, 10 seconds". Default: false
  *  - entryFormat: How to format each entry of the display. %v for entry's value and %t for entry's time. For example: {%v will begin in %t.} Default: {%t %v}
  *  - entryStyle: Adds the given style to each outer div containing the entry's value, time, and additional text from entryFormat.
  *  - valueStyle: Adds the given style to each div containing the entry's value.
@@ -24,22 +24,20 @@ import { TIME_PAGE_LOAD, timerDisplayCreationError, timerDisplayError, camelCase
  *  - entryClass: Adds the given CSS class name to each outer div containing the entry's value, time, and additional text from entryFormat.
  *  - valueClass: Adds the given CSS class name to each div containing the entry's value.
  *  - timeClass: Adds the given CSS class name to each div containing the entry's time.
- *  - startAtEntry: Displays entries starting at this entry number. Useful when stringing multiple displays together for more control over styling. Default: 1
- *  - endAtEntry: Displays entries ending at this entry number. Useful when stringing multiple displays together for more control over styling. Default: Equal to the depth
+ *  - startAtEntry: Display entries starting at this entry number. Useful when stringing multiple displays together for more control over styling. Default: 1
+ *  - endAtEntry: Display entries ending at this entry number. Useful when stringing multiple displays together for more control over styling. Default: Equal to the depth
  * 
  *  - filter: A filter to apply to data received by a timer. Valid filters are:
  *      >- query: Filter the data supplied by the timer to only display entries whose value matches one of these query strings.
  *          Note this will make the timer's depth dynamic. It will continue adding entries to its returned data until it reaches this display's depth number of queried entries.
+ * 
+ * @param args - The args object created from the element with the "settings" class
  */
 export class CountdownTimerDisplay extends TimerDisplay{
-    /**
-     * Constructor for {@link CountdownTimerDisplay}
-     * @param args - The args object created from the element with the "settings" class
-     */
     constructor(element, args){
         super();
 
-        // Validate and convert the given parameters into the values used by this class.
+        // Validate and convert the args into the values used by this class.
         let validatedParameters = CountdownTimerDisplay.#validateParameters(args);
         if(!validatedParameters) return null;
 
@@ -50,13 +48,13 @@ export class CountdownTimerDisplay extends TimerDisplay{
         this.element = element;
 
         /**
-         * The ID of the Timer to attach this display to
+         * The ID on the HTML element containing the Timer this display will attach to
          * @type {String}
          */
         this.timerId = validatedParameters.timerId;
 
         /**
-         * The minimum number of scheduled entries the Timer must give to {@link ListTimerDisplay.updateData|updateData}.
+         * The minimum number of scheduled entries the Timer must give to {@link CountdownTimerDisplay.updateData|updateData}.
          * @type {Number}
          */
         this.depth = validatedParameters.depth;
@@ -104,12 +102,35 @@ export class CountdownTimerDisplay extends TimerDisplay{
          */
         this.entryFormat = validatedParameters.entryFormat;
 
-        // Adds styles and class names to the generated divs
+        /**
+         * The style for the outer div for an entry
+         * @type {String}
+         */
         this.entryStyle = validatedParameters.entryStyle;
+        /**
+         * The style for the div containing the entry's value
+         * @type {String}
+         */
         this.valueStyle = validatedParameters.valueStyle;
+        /**
+         * The style for the div containing the entry's time
+         * @type {String}
+         */
         this.timeStyle = validatedParameters.timeStyle;
+        /**
+         * The class name for the outer div for an entry
+         * @type {String}
+         */
         this.entryClass = validatedParameters.entryClass;
+        /**
+         * The class name for the div containing the entry's value
+         * @type {String}
+         */
         this.valueClass = validatedParameters.valueClass;
+        /**
+         * The class name for the div containing the entry's time
+         * @type {String}
+         */
         this.timeClass = validatedParameters.timeClass;
 
         /**
@@ -144,7 +165,7 @@ export class CountdownTimerDisplay extends TimerDisplay{
 
         /**
          * Data obtained from the attached timer
-         * @type {Number[][]}
+         * @type {Number[]}
          */
         this.timerData = [];
 
@@ -161,26 +182,32 @@ export class CountdownTimerDisplay extends TimerDisplay{
         this.lastUpdate = 0;
         
         /**
-         * The next scheduled update in milliseconds since unix epoch (to deal with timeout inaccuracies causing an early update)
+         * The next scheduled update in milliseconds since unix epoch (to deal with timeout triggering early)
          * @type {Number}
          */
         this.nextUpdate = 0;
 
+        /**
+         * The next scheduled timeout (used to make sure multiple timeouts aren't simultaneously queued)
+         * @type {Number|null}
+         */
         this.timeout = null;
 
+        // Make sure functions provided as callbacks to requestAnimationFrame don't lose "this" context.
         this.redraw = this.#redraw.bind(this);
         this.queueNextUpdate = this.#queueNextUpdate.bind(this);
 
+        // Immediately initialize this display
         this.initializeElements();
         this.timer.attachDisplay(this);
     }
 
     /**
      * Handles udpated data from a Timer. Note a data update does not mean the data actually changed since the last update.
-     * @param {Number[][]} newTimerData - 2D array with the entry index from the timer's list and its start time as unix epoch. First entry in this array is the currently active entry.
+     * @param {Number[]} newTimerData - An array with the entry index from the timer's list and its start time as unix epoch. First 2 numbers in this array are for the currently active entry.
      */
     updateData(newTimerData){
-        // Apply query filter
+        // Apply query filter to the received data
         if(this.query.length > 0){
             let list = this.timer.list;
             for(let i = newTimerData.length-2; i >=0; i -= 2){
@@ -192,15 +219,13 @@ export class CountdownTimerDisplay extends TimerDisplay{
     }
 
     /**
-     * Using updated data from a timer, updates properties and queues a redraw of the display's HTML contents if necessary.
-     * @param {Number[][]} newTimerData - 2D array with the entry index from the timer's list and its start time as unix epoch. First entry in this array is the currently active entry.
-     * @param {Boolean} forceRedraw - Whether or not to force a redraw even if there is no change in data.
-     * @returns 
+     * Using updated data from a timer, updates properties and queues a redraw of the display's HTML contents.
+     * @param {Number[]} newTimerData - An array with the entry index from the timer's list and its start time as unix epoch. First 2 numbers in this array are for the currently active entry.
      */
-    updateDisplay(newTimerData, forceRedraw){
+    updateDisplay(newTimerData){
         // Cancel if updating display with this data is impossible
         if(newTimerData.length/2 < this.depth) return timerDisplayError(`Countdown type timer display failed an update due to invalid timerData length. Length expected: ${this.depth*2} timerData:`, newTimerData); 
-        // Checking here if a countdown display needs to redraw would cause slight desyncs between timers due to varying Date.now values. It is better to use the timestamp provided by requestAnimationFrame.
+        
         this.timerData = newTimerData.slice();
 
         // Redraw the display on the next animation frame if a redraw isn't already queued
@@ -220,12 +245,13 @@ export class CountdownTimerDisplay extends TimerDisplay{
 
     /**
      * Redraws the HTML contents of this display.
-     * This will recalculate what each entry time and value should be displaying.\
+     * This will recalculate what each entry time and value should be displaying.
      * 
      * Note: The display should be initialized with {@link CountdownTimerDisplay.initializeElements|initializeElements} before redrawing. redraw assumes the display's elements already exist.
      * @param {Number} timestamp - The timestamp provided by requestAnimationFrame
      */
     #redraw(timestamp){
+        // Remove decimal from timestamp
         timestamp = Math.floor(timestamp);
         // Determine the current time
         let currTime = TIME_PAGE_LOAD + timestamp;
@@ -248,7 +274,7 @@ export class CountdownTimerDisplay extends TimerDisplay{
 
         // Loop through all entries
         for(let i = 0; i < this.depth; i++){
-            // Update time
+            // Update entry time
             if(this.dataElements[i*2]){
                 this.dataElements[i*2].text(TimerDisplay.formatTimeDuration( Math.floor(Math.max(this.timerData[i*2+1] - TIME_PAGE_LOAD - timestamp, 0)), this.timeFormat, this.verbose, this.hideLeading0, this.hideAll0));
             }
@@ -266,7 +292,7 @@ export class CountdownTimerDisplay extends TimerDisplay{
     /**
      * Clears the display's element and recreates its contents.
      * 
-     * Note: Entries will have no text content until the next {@link CountdownTimerDisplay.redraw|redraw}. Use  {@link CountdownTimerDisplay.updateDisplay|this.updateDisplay(this.timerData, true)} to force a redraw.
+     * Note: Entries will have no text content until the next {@link CountdownTimerDisplay.redraw|redraw}.
      */
     initializeElements(){
         // Empty the display's HTML
@@ -306,7 +332,7 @@ export class CountdownTimerDisplay extends TimerDisplay{
             return accumulator;
         }, {});
 
-        // Split the template at the placeholders
+        // Split the entryFormat at the placeholders
         let templateParts = this.entryFormat.split(/(%v|%t)/);
 
         // Loop through every entry
@@ -339,10 +365,14 @@ export class CountdownTimerDisplay extends TimerDisplay{
             $elements = $elements.add($entry);
         }
 
-        // Append all created elements to the parent element at once
+        // Append all created elements to the parent element
         $(this.element).append($elements);
     }
 
+    /**
+     * Take the settings and turns it into the correct values used by this class, or returns null if a setting is invalid
+     * @param {Object} args - The original settings provided
+     */
     static #validateParameters(args){
         // Validate all args common to most displays
         let returnObject = TimerDisplay.argValidationAndConversion(args , "countdown");

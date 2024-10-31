@@ -26,18 +26,16 @@ import { timerDisplayCreationError, timerDisplayError, camelCase } from "../help
  *  - endAtEntry: Displays entries ending at this entry number. Useful when stringing multiple displays together for more control over styling. Default: Equal to the depth
  * 
  *  - filter: A filter to apply to data received by a timer. Valid filters are:
- *      >- query: Filter the data supplied by the timer to only display entries whose value matches one of these query strings.
+ *      >- query: Filter the data supplied by the timer to entries whose value matches one of these query strings.
  *          Note this will make the timer's depth dynamic. It will continue adding entries to its returned data until it reaches this display's depth number of queried entries.
+ * 
+ * @param args - The args object created from the element with the "settings" class
  */
 export class ListTimerDisplay extends TimerDisplay{
-    /**
-     * Constructor for {@link ListTimerDisplay}
-     * @param args - The args object created from the element with the "settings" class
-     */
     constructor(element, args){
         super();
 
-        // Validate and convert the given parameters into the values used by this class.
+        // Validate and convert the args into the values used by this class.
         let validatedParameters = ListTimerDisplay.#validateParameters(args);
         if(!validatedParameters) return null;
 
@@ -48,13 +46,13 @@ export class ListTimerDisplay extends TimerDisplay{
         this.element = element;
 
         /**
-         * The ID of the Timer to attach this display to
+         * The ID on the HTML element containing the Timer this display will attach to
          * @type {String}
          */
         this.timerId = validatedParameters.timerId;
 
         /**
-         * The minimum number of scheduled entries the Timer must give to {@link ListTimerDisplay.updateData|updateData}.
+         * The minimum number of entries the Timer must give to {@link ListTimerDisplay.updateData|updateData}.
          * @type {Number}
          */
         this.depth = validatedParameters.depth;
@@ -83,12 +81,35 @@ export class ListTimerDisplay extends TimerDisplay{
          */
         this.entryFormat = validatedParameters.entryFormat;
 
-        // Adds styles and class names to the generated divs
+        /**
+         * The style for the outer div for an entry
+         * @type {String}
+         */
         this.entryStyle = validatedParameters.entryStyle;
+        /**
+         * The style for the div containing the entry's value
+         * @type {String}
+         */
         this.valueStyle = validatedParameters.valueStyle;
+        /**
+         * The style for the div containing the entry's time
+         * @type {String}
+         */
         this.timeStyle = validatedParameters.timeStyle;
+        /**
+         * The class name for the outer div for an entry
+         * @type {String}
+         */
         this.entryClass = validatedParameters.entryClass;
+        /**
+         * The class name for the div containing the entry's value
+         * @type {String}
+         */
         this.valueClass = validatedParameters.valueClass;
+        /**
+         * The class name for the div containing the entry's time
+         * @type {String}
+         */
         this.timeClass = validatedParameters.timeClass;
 
         /**
@@ -123,7 +144,7 @@ export class ListTimerDisplay extends TimerDisplay{
 
         /**
          * Data obtained from the attached timer
-         * @type {Number[][]}
+         * @type {Number[]}
          */
         this.timerData = [];
 
@@ -133,18 +154,20 @@ export class ListTimerDisplay extends TimerDisplay{
          */
         this.dataElements = [];
 
+        // Make sure functions provided as callbacks to requestAnimationFrame don't lose "this" context.
         this.redraw = this.#redraw.bind(this);
 
+        // Immediately initialize this display
         this.initializeElements();
         this.timer.attachDisplay(this);
     }
 
     /**
      * Handles udpated data from a Timer. Note a data update does not mean the data actually changed since the last update.
-     * @param {Number[][]} newTimerData - 2D array with the entry index from the timer's list and its start time as unix epoch. First entry in this array is the currently active entry.
+     * @param {Number[]} newTimerData - An array with the entry index from the timer's list and its start time as unix epoch. First 2 numbers in this array are for the currently active entry.
      */
     updateData(newTimerData){
-        // Apply query filter
+        // Apply query filter to the received data
         if(this.query.length > 0){
             let list = this.timer.list;
             for(let i = newTimerData.length-2; i >=0; i -= 2){
@@ -157,9 +180,8 @@ export class ListTimerDisplay extends TimerDisplay{
 
     /**
      * Using updated data from a timer, updates properties and queues a redraw of the display's HTML contents if necessary.
-     * @param {Number[][]} newTimerData - 2D array with the entry index from the timer's list and its start time as unix epoch. First entry in this array is the currently active entry.
+     * @param {Number[]} newTimerData - An array with the entry index from the timer's list and its start time as unix epoch. First 2 numbers in this array are for the currently active entry.
      * @param {Boolean} forceRedraw - Whether or not to force a redraw even if there is no change in data.
-     * @returns 
      */
     updateDisplay(newTimerData, forceRedraw){
         // Cancel if updating display with this data is impossible
@@ -172,7 +194,7 @@ export class ListTimerDisplay extends TimerDisplay{
                 return;
             }
         }
-        // There is a new active entry or forceRedraw was true.
+        // There is a new active entry, forceRedraw was true, or the active entry has changed.
         // Store the updated data
         this.timerData = newTimerData.slice();
 
@@ -184,15 +206,15 @@ export class ListTimerDisplay extends TimerDisplay{
 
     /**
      * Redraws the HTML contents of this display.
-     * This will recalculate what each entry time and value should be displaying, so it should only be done if a time or value has changed.
-     * {@link ListTimerDisplay.updateData|this.updateData} would determine that and call redraw automatically if necessary.
+     * This is the most CPU intensive part of displays, so it should only be done if an entry has changed.
+     * {@link ListTimerDisplay.updateData|this.updateData} would determine that and call redraw itself if necessary.
      * 
      * Note: The display should be initialized with {@link ListTimerDisplay.initializeElements|initializeElements} before redrawing. redraw assumes the display's elements already exist.
      */
     #redraw(){
         // Loop through all entries
         for(let i = 0; i < this.depth; i++){
-            // Update time
+            // Update entry time
             if(this.dataElements[i*2]){
                 this.dataElements[i*2].text(TimerDisplay.formatTimeClock(this.timerData[i*2+1], this.timeFormat, this.is12hour));
             }
@@ -208,7 +230,9 @@ export class ListTimerDisplay extends TimerDisplay{
     /**
      * Clears the display's element and recreates its contents.
      * 
-     * Note: Entries will have no text content until the next {@link ListTimerDisplay.redraw|redraw}. Use  {@link ListTimerDisplay.updateDisplay|this.updateDisplay(this.timerData, true)} to force a redraw.
+     * Note: Entries will have no text content until the next {@link ListTimerDisplay.redraw|redraw}.
+     * 
+     * {@link ListTimerDisplay.updateDisplay|this.updateDisplay(this.timerData, true)} can be used to force a redraw.
      */
     initializeElements(){
         // Empty the display's HTML
@@ -218,11 +242,6 @@ export class ListTimerDisplay extends TimerDisplay{
         let $elements = $();
 
         // Sanitize the CSS styles
-        function camelCase(str){
-            return str.replace(/-([a-z])/gi, function(match, letter){
-                return letter.toUpperCase();
-            });
-        }
         // Entry style
         let entryStyleObj = this.entryStyle.split(';').reduce((accumulator, style) => {
             let [key, value] = style.split(':');
@@ -253,7 +272,7 @@ export class ListTimerDisplay extends TimerDisplay{
             return accumulator;
         }, {});
 
-        // Split the template at the placeholders
+        // Split entryFormat at the placeholders
         let templateParts = this.entryFormat.split(/(%v|%t)/);
 
         // Loop through every entry
@@ -286,10 +305,14 @@ export class ListTimerDisplay extends TimerDisplay{
             $elements = $elements.add($entry);
         }
 
-        // Append all created elements to the parent element at once
+        // Append all created elements to the parent element
         $(this.element).append($elements);
     }
 
+    /**
+     * Take the settings and turns it into the correct values used by this class, or returns null if a setting is invalid
+     * @param {Object} args - The original settings provided
+     */
     static #validateParameters(args){
         // Validate all args common to most displays
         let returnObject = TimerDisplay.argValidationAndConversion(args , "list");

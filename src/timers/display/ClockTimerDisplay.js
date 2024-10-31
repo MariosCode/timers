@@ -1,11 +1,11 @@
-import { TIME_PAGE_LOAD, SERVER_TIMEZONE, ERINN_TIME_OFFSET, TIME_PER_ERINN_MINUTE, TIME_PER_ERINN_HOUR, TIME_PER_ERINN_DAY } from '../helper/utils.js';
+import { TIME_PAGE_LOAD, SERVER_TIMEZONE, ERINN_TIME_OFFSET, TIME_PER_ERINN_MINUTE, TIME_PER_ERINN_HOUR, TIME_PER_ERINN_DAY, camelCase } from '../helper/utils.js';
 import { TimerDisplay } from './TimerDisplay.js'
 
 /**  
  * @class ClockTimerDisplay
  * @classdesc A basic display to show the current time in Server time, local time, or Erinn time. No Timer needed.
  * 
- * Whether Server, Local, or Erinn time is shown depends on the last letter used in the optional timeFormat setting.
+ * Whether Server, Local, or Erinn time is shown depends on the last letter used in the timeFormat setting.
  * 
  * Optionally in settings, a clock timer display may have the following:
  * 
@@ -16,12 +16,15 @@ import { TimerDisplay } from './TimerDisplay.js'
  *  - timeStyle: Adds the given style to the div containing the time.
  *  - entryClass: Adds the given CSS class name to the outer div containing the time and additional text from entryFormat.
  *  - timeClass: Adds the given CSS class name to the div containing the time.
+ * 
+ * @param {HTMLElement} element - The HTML element for this display
+ * @param {Object} args - The args object created from the element with the "settings" class
  */
 export class ClockTimerDisplay extends TimerDisplay{
     constructor(element, args){
         super();
 
-        // Validate and convert the given parameters into the values used by this class.
+        // Validate and convert the args into the values used by this class.
         let validatedParameters = ClockTimerDisplay.#validateParameters(args);
         if(!validatedParameters) return null;
 
@@ -56,14 +59,29 @@ export class ClockTimerDisplay extends TimerDisplay{
          */
         this.entryFormat = validatedParameters.entryFormat;
 
-        // Adds styles and class names to the generated divs
+        /**
+         * The style for the outer div for an entry
+         * @type {String}
+         */
         this.entryStyle = validatedParameters.entryStyle;
+        /**
+         * The style for the div containing the time
+         * @type {String}
+         */
         this.timeStyle = validatedParameters.timeStyle;
+        /**
+         * The class name for the outer div for an entry
+         * @type {String}
+         */
         this.entryClass = validatedParameters.entryClass;
+        /**
+         * The class name for the div containing the time
+         * @type {String}
+         */
         this.timeClass = validatedParameters.timeClass;
         
         /**
-         * The original arguments provided from the settings element
+         * The original arguments from the settings element
          * @type {Object}
          */
         this.args = args;
@@ -81,28 +99,28 @@ export class ClockTimerDisplay extends TimerDisplay{
         this.timeout = null;
         
         /**
-         * The last time in milliseconds since unix epoch the clock updated its contents (to prevent excessive updates)
-         * @type {Number}
-         */
-        this.lastUpdate = 0;
-        
-        /**
-         * The next scheduled update in milliseconds since unix epoch (to deal with timeout inaccuracies causing an early update)
+         * The next scheduled update in milliseconds since unix epoch (to deal with timeout triggering early)
          * @type {Number}
          */
         this.nextUpdate = 0;
 
+        // Make sure functions provided as callbacks to requestAnimationFrame don't lose "this" context.
         this.updateData = this.#updateData.bind(this);
         this.queueNextUpdate = this.#queueNextUpdate.bind(this);
 
+        // Immediately initialize and begin drawing this display
         this.initializeElements();
-        requestAnimationFrame(this.updateData);
+        /**
+         * The currently queued requestAnimationFrame (to prevent queueing multiple frames when the tab is inactive)
+         * @type {Number|null}
+         */
+        this.redrawID = requestAnimationFrame(this.updateData);
     }
 
      /**
      * Clears the display's element and recreates its contents.
      * 
-     * Note: Entries will have no text content until the next {@link ListTimerDisplay.redraw|redraw}. Use  {@link ListTimerDisplay.updateDisplay|this.updateDisplay(this.timerData, true)} to force a redraw.
+     * Note: Entries will have no text content until the next {@link ClockTimerDisplay.redraw|redraw}.
      */
     initializeElements(){
         // Empty the display's HTML
@@ -112,12 +130,7 @@ export class ClockTimerDisplay extends TimerDisplay{
         let $elements = $();
 
         // Sanitize the CSS styles
-        function camelCase(str){
-            return str.replace(/-([a-z])/gi, function(match, letter){
-                return letter.toUpperCase();
-            });
-        }
-        // Entry style
+        // Sanitize the entry style
         let entryStyleObj = this.entryStyle.split(';').reduce((accumulator, style) => {
             let [key, value] = style.split(':');
             if (key && value) {
@@ -127,7 +140,7 @@ export class ClockTimerDisplay extends TimerDisplay{
             return accumulator;
         }, {});
 
-        // Time style
+        // Sanitize the time style
         let timeStyleObj = this.timeStyle.split(';').reduce((accumulator, style) => {
             let [key, value] = style.split(':');
             if (key && value) {
@@ -137,7 +150,7 @@ export class ClockTimerDisplay extends TimerDisplay{
             return accumulator;
         }, {});
 
-        // Split the template at the placeholder
+        // Split the entryFormat at the placeholder
         let templateParts = this.entryFormat.split(/(%t)/);
 
         // The wrapper for the entry, with entryClass and entryStyle applied
@@ -162,25 +175,30 @@ export class ClockTimerDisplay extends TimerDisplay{
         // Add the entry to the container to later append to the HTML
         $elements = $elements.add($entry);
 
-        // Append all created elements to the parent element at once
+        // Append all created elements to the parent element
         $(this.element).append($elements);
     }
 
     /**
-     * Queue the next requestAnimationFrame
+     * Queue the next requestAnimationFrame only if one is not already queued
      */
     #queueNextUpdate(){
-        requestAnimationFrame(this.updateData);
+        if(!this.redrawID){
+            this.redrawID = requestAnimationFrame(this.updateData);
+        }
     }
 
     /**
-     * Determines if time has changed and if so redraws.
+     * Determine if time has changed and if so redraw the display.
      */
     #updateData(timestamp){
+        // Allow new requestAnimaitonFrame to be queued
+        this.redrawID = null;
+        // Remove decimal from timestamp
         timestamp = Math.floor(timestamp);
         // Determine the current time
         let currTime = TIME_PAGE_LOAD + timestamp;
-        // Update if next scheduled time was reached
+        // Redraw if next scheduled time was reached
         if(currTime >= this.nextUpdate){
             this.redraw(timestamp);
             // Determine precision in milliseconds
@@ -202,19 +220,23 @@ export class ClockTimerDisplay extends TimerDisplay{
     }
 
     /**
-     * Redraws the HTML contents of this display.
-     * This will recalculate what the time should be displaying, so it should only be done if a time has changed.
+     * Redraw the HTML contents of this display.
+     * This is the most CPU intensive part of displays, so it should only be done if a time has changed.
      * {@link ClockTimerDisplay.updateData|this.updateData} would determine that and call redraw automatically if necessary.
      * 
      * Note: The display should be initialized with {@link ClockTimerDisplay.initializeElements|this.initializeElements} before redrawing. redraw assumes the display's elements already exist.
      */
     redraw(timestamp){
-        // Update time
+        // Just update the time
         if(this.dataElement){
             this.dataElement.text(TimerDisplay.formatTimeClock(TIME_PAGE_LOAD + timestamp, this.timeFormat, this.is12hour));
         }
     }
 
+    /**
+     * Take the settings and turns it into the correct values used by this class, or returns null if a setting is invalid
+     * @param {Object} args - The original settings provided
+     */
     static #validateParameters(args){
         // Validate all args common to most displays
         let returnObject = TimerDisplay.argValidationAndConversion(args , "clock");

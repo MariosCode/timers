@@ -57,10 +57,10 @@ export class TimerDisplay{
                 hour12: false
             });
 
-            // Get the components of the date
+            // Get the parts of the date
             const parts = formatter.formatToParts(date);
 
-            // Extract the components we need
+            // Extract the parts we need
             hours = parseInt(parts.find(p => p.type === 'hour').value);
             minutes = parseInt(parts.find(p => p.type === 'minute').value);
             seconds = parseInt(parts.find(p => p.type === 'second').value);
@@ -84,10 +84,8 @@ export class TimerDisplay{
             millisecondsParam = millisecondsParam % TIME_PER_ERINN_DAY;
             // Extract units of time from the milliseconds
             hours = Math.floor(millisecondsParam / TIME_PER_ERINN_HOUR);
-            millisecondsParam = millisecondsParam % TIME_PER_ERINN_HOUR;
-            minutes = Math.floor(millisecondsParam / TIME_PER_ERINN_MINUTE);
-            millisecondsParam = millisecondsParam % TIME_PER_ERINN_MINUTE;
-            seconds = Math.floor(millisecondsParam / Math.floor(TIME_PER_ERINN_MINUTE/60)); // Math.floor for future proofing, code should handle a change in TIME_PER_ERINN_MINUTE without issue
+            minutes = Math.floor((millisecondsParam % TIME_PER_ERINN_HOUR) / TIME_PER_ERINN_MINUTE);
+            seconds = Math.floor(( millisecondsParam % TIME_PER_ERINN_MINUTE) / Math.floor(TIME_PER_ERINN_MINUTE/60)); // Math.floor for future proofing, code should handle a change in TIME_PER_ERINN_MINUTE without issue
         }else{
             return timerDisplayError(`formatTimeClock is unable to use format "${format}". The last character of the string should be S (Server time), L (local time), or E (Erinn time).`);
         }
@@ -154,7 +152,7 @@ export class TimerDisplay{
      * @param {Boolean} hideAll0 - Hide all 0 values throughout the string
      * @returns {String} - Returns the formatted time as a string
      */
-    static formatTimeDuration(millisecondsParam, format, verbose = false, hideLeading0 = false, hideAll0 = false){
+    static formatTimeDuration(millisecondsParam, format, verbose, hideLeading0, hideAll0){
         // Validate parameters
         if(!Number.isInteger(millisecondsParam)) return timerDisplayError(`formatTimeDuration is Unable to format milliseconds "${millisecondsParam}". Milliseconds must be a whole number.`);
         if(typeof format !== "string") return timerDisplayError(`formatTimeDuration is unable to use format "${format}". Format must be a string.`);
@@ -185,7 +183,7 @@ export class TimerDisplay{
             return number.toString().padStart(length, '0');
         }
 
-        // Get units of time for a real time
+        // Get units of time for real time
         if(formatType === 'S' || formatType === 'L'){
             if (!validFormatReal.test(format)) return timerDisplayError(`formatTimeDuration is unable to use format "${format}". Invalid format pattern.`);
             // Extract parts from the format. Use false if the format does not use that unit of time.
@@ -330,6 +328,11 @@ export class TimerDisplay{
         return `${days}${hours}${minutes}${seconds}${milliseconds}`;
     }
 
+    /**
+     * Take the settings and turns it into the correct values used by most TimerDisplay subclasses, or returns null if a setting is invalid.
+     * @param {Object} args - The original settings provided
+     * @param {String} displayType - the type of TimerDisplay. clock, console, countdown, or list.
+     */
     static argValidationAndConversion(args, displayType){
         // Make displayType not case sensitive by making it all lower case
         displayType = displayType.toLowerCase();
@@ -370,6 +373,7 @@ export class TimerDisplay{
         if('timeFormat' in args){
             if(args.timeFormat.length > 1) return timerDisplayCreationError('Timer displays can not have more than 1 timeFormat.');
 
+            // Make the format not case sensitive
             timeFormat = `${args.timeFormat[0].slice(0,-1).toLowerCase()}${args.timeFormat[0][args.timeFormat[0].length - 1].toUpperCase()}`;
             // Valid patterns
             let validFormatReal = /^(hh|h)(:mm(:ss(\.sss)?)?)?$/;

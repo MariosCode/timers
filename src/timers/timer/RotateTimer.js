@@ -26,8 +26,6 @@ import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
   * @property {Number} milliseconds - Duration as milliseconds
   */
 
- // TODO: to save resources: save scheduled time and immediately wait again if rotate was called too soon. Option to force rotation
-
 /**  
  * @class RotateTimer
  * @classdesc Rotate type Timer. 
@@ -46,7 +44,7 @@ import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
  * And one of the following:
  * 
  * - changeAt: A value or multiple values. Each value is the time to rotate the timer to the next item in the list. For example "{6:00E}{8:00E}{12:00E}", or "{6:00S}{8:00:00.000S}", or "6:00:00S". Can also be "sunshift".
- * - changeEvery: A single value for how often to rotate. For example "6:00S" or "6:00:00.000S" (every 6 Server time hours), or "2:00E" (every 2 Erinn time hours).
+ * - changeEvery: A single value for how often to rotate. For example "6:00S" or "6:00:00.000S" (every 6 real time hours), or "2:00E" (every 2 Erinn time hours).
  * 
  * Optionally in settings, a rotate timer may have the following:
  * 
@@ -169,6 +167,10 @@ export class RotateTimer extends Timer{
         return new RotateTimer({args, list, epoch, compress, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout});
     }
 
+    /**
+     * Attaches a display to this Timer instance
+     * @param {TimerDisplay} display 
+     */
     attachDisplay(display){
         // Validate the given TimerDisplay
         if(!(display instanceof TimerDisplay)) return timerError("Failed to attach display due to the provided display not being an instance of TimerDisplay or its subclasses.");
@@ -195,8 +197,12 @@ export class RotateTimer extends Timer{
         }
     }
 
+    /**
+     * Removes an attached display from this Timer instance
+     * @param {TimerDisplay} display 
+     */
     detachDisplay(display){
-        // Validate
+        // Validate the display is attached
         if(!(this.timerDisplays.has(display))) return timerError("Failed to detach display due to the provided display not being attached.");
 
         this.timerDisplays.delete(display);
@@ -215,6 +221,9 @@ export class RotateTimer extends Timer{
         }
     }
 
+    /**
+     * Loops through all attached displays to recalculate the depth of this Timer instance
+     */
     recalculateDepth(){
         this.depth = 2;
         this.timerDisplays.forEach((value, display) => {
@@ -222,6 +231,9 @@ export class RotateTimer extends Timer{
         });
     }
 
+    /**
+     * Loops through all attached displays to recalculate the query of this Timer instance
+     */
     recalculateQuery(){
         this.query = [];
         this.queryDepth = [];
@@ -234,6 +246,9 @@ export class RotateTimer extends Timer{
         });
     }
 
+    /**
+     * Sends all attached displays the current rotationData through their updataData method
+     */
     updateAllDisplays() {
         this.timerDisplays.forEach((value, display) => {
             display.updateData(this.rotationData.slice());
@@ -247,7 +262,7 @@ export class RotateTimer extends Timer{
      * @param {Object} obj - Object containing all parameters
      * @param {Object.<String, String[]>} obj.args - The args object created from the element with the "settings" class
      * @param {String[]} obj.list - List created from all li elements in a ul or ol element
-     * @returns {{epoch: Epoch, updatedChangeAt: String[], erinnTimes: String[], serverTimes: String[], changeEveryDuration: Duration}|null} - Returns an instance of RotateTimer if the parameters are valid, otherwise returns null
+     * @returns {{epoch: Epoch, compress: Boolean, updatedChangeAt: String[], erinnTimes: String[], serverTimes: String[], changeEveryDuration: Duration}|null} - Returns an object if the parameters are valid, otherwise returns null
      * @private  
      */  
     static #validateParameters({args, list}){
@@ -309,7 +324,7 @@ export class RotateTimer extends Timer{
                     convertedTimeString.type === "Erinn" ? erinnTimes.push(convertedTimeString.milliseconds) : serverTimes.push(convertedTimeString.milliseconds);
                 }
             });
-            if(errorValue !== false){ // Specifically a boolean check. We don't want things like empty strings to be considered false here.
+            if(errorValue !== false){ // Specifically a boolean check, not a falsy check.
                 return timerError(`Rotate timer failed to complete convertTimeStringToMillisecondsAfterMidnight at a changeAt value of ${errorValue}`);
             }
             // Sort the arrays from earliest time to latest
@@ -331,11 +346,10 @@ export class RotateTimer extends Timer{
         return {epoch, compress, updatedChangeAt, erinnTimes, serverTimes, changeEveryDuration};
     }
 
-    /**  
+    /**
      * Updates the rotation and TimerDisplays for rotate timers with a changeEvery then sets a timeout to call itself again at the next scheduled rotation time.
-     *   
-     * @private  
-     */  
+     * @private
+     */
     #updateRotationChangeEvery(){
         // Use setTimeout instead of setInterval. Keep in mind browsers throttle javascript timers when the tab is not active. Timing is not exact and needs to be manually adjusted each time.
         // Recalculate what the rotation should be at now
@@ -360,11 +374,11 @@ export class RotateTimer extends Timer{
                 if(this.compress && i === 0 && previousActiveEntry.length > 0 && this.list[this.rotation % this.list.length] === this.list[previousActiveEntry[0]]){
                     this.rotationData.push(previousActiveEntry[0], previousActiveEntry[1]);
                 }else{
-                    // Continue to the next loop if compression is on and the last recorded entry has the same list value as this loop's entry.
+                    // Skip and continue to the next loop if compression is on and the last recorded entry has the same list value as this loop's entry.
                     if(this.compress && i !== 0){
                         if(this.list[this.rotationData[this.rotationData.length-2]] === this.list[(this.rotation + i) % this.list.length]) continue;
                     }
-                    // Record this entry
+                    // Otherwise, record this entry
                     this.rotationData.push((this.rotation + i) % this.list.length,
                         epochTime + ((this.rotation + i) * this.changeEveryDuration.milliseconds));
                 }
@@ -393,11 +407,10 @@ export class RotateTimer extends Timer{
         this.timeout = setTimeout(this.updateRotation, waitTime);
     }
 
-    /**  
+    /**
      * Updates the rotation and TimerDisplays for rotate timers with a changeAt then sets a timeout to call itself again at the next scheduled rotation time.
-     *   
-     * @private  
-     */ 
+     * @private
+     */
     #updateRotationChangeAt(){
         // Reset rotation to recalculate it from scratch
         let lastRotation = this.rotation;
@@ -435,7 +448,7 @@ export class RotateTimer extends Timer{
                 let daysBetween = (elapsedTime - (TIME_PER_ERINN_DAY-startInDay) - endInErinnDay)/TIME_PER_ERINN_DAY;
                 this.rotation += this.erinnTimes.length * daysBetween;
             }
-            // Get the next scheduled erinnTime and update waitTime. Minimum waitTime is 1ms.
+            // Get the next scheduled erinnTime and update waitTime.
             let nextScheduledTime = this.erinnTimes.find(rotationTime => rotationTime > endInErinnDay);
             if(typeof nextScheduledTime !== 'undefined'){
                 // Next rotation is today. Adjust it for milliseconds from now.
@@ -471,7 +484,7 @@ export class RotateTimer extends Timer{
                 this.rotation += this.serverTimes.length * daysBetween;
             }
 
-            // Get the next scheduled serverTime and update waitTime. Minimum waitTime is 1ms.
+            // Get the next scheduled serverTime and update waitTime.
             let nextScheduledTime = this.serverTimes.find(rotationTime => rotationTime > endInServerDay);
             if(typeof nextScheduledTime !== 'undefined'){
                 // Next rotation is today. Adjust it for milliseconds from now.
