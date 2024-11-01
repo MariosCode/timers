@@ -14,7 +14,8 @@ import { timerDisplayCreationError, timerDisplayError, camelCase } from "../help
  * 
  *  - depth: A number for how many entries to show. The first entry given is the currently active entry in the timer. Default: 1
  *  - timeFormat: How to format any time displayed by this timer display. The number of letters is the minimum digit count (padded with 0s). Ends with a S for server time, E for Erinn time, L for local time. See {@link TimerDisplay.formatTimeClock} Default: h:mm:ssS
- *  - 12hour: true or false. If true, time is displayed in 12 hour format with a space and AM/PM at the end. Default: false
+ *  - 12hour: true or false. If true, time is displayed in 12 hour format. Default: false
+ *      >- suffix: Used with 12hour. Expects two values. The first value will be placed after the time during the first 12 hours of the day, the second value after. Example: { am}{ pm}
  *  - entryFormat: How to format each entry of the display. %v for entry's value and %t for entry's time. For example: {The next event is %v at %t.} Default: {%t %v}
  *  - entryStyle: Adds the given style to each outer div containing the entry's value, time, and additional text from entryFormat.
  *  - valueStyle: Adds the given style to each div containing the entry's value.
@@ -70,10 +71,22 @@ export class ListTimerDisplay extends TimerDisplay{
         this.timeFormat = validatedParameters.timeFormat;
 
         /**
-         * Whether or not to display the time in 12 hour format with AM/PM at the end
+         * Whether or not to display the time in 12 hour format
          * @type {Boolean}
          */
         this.is12hour = validatedParameters.is12hour;
+
+        /**
+         * Used with 12hour to place text after the time during the first 12 hours of the day
+         * @type {String}
+         */
+        this.suffixam = validatedParameters.suffixam;
+
+        /**
+         * Used with 12hour to place text after the time during the last 12 hours of the day
+         * @type {String}
+         */
+        this.suffixpm = validatedParameters.suffixpm;
 
         /**
          * The format to use for each displayed entry. Example: "{%t %v}"
@@ -216,7 +229,7 @@ export class ListTimerDisplay extends TimerDisplay{
         for(let i = 0; i < this.depth; i++){
             // Update entry time
             if(this.dataElements[i*2]){
-                this.dataElements[i*2].text(TimerDisplay.formatTimeClock(this.timerData[i*2+1], this.timeFormat, this.is12hour));
+                this.dataElements[i*2].text(TimerDisplay.formatTimeClock(this.timerData[i*2+1], this.timeFormat, this.is12hour, this.suffixam, this.suffixpm));
             }
             // Update entry value
             if(this.dataElements[i*2 + 1]){

@@ -7,26 +7,72 @@
     <script type="module" src="../timers/main.js"></script>
   </head>
   <body>
+
+    <table width="300px" style="border: 1px solid #CCCCCC; font-size: 12px;">
+      <tbody>
+        <tr>
+          <td colspan="4" style="height: 24px; line-height: 24px; text-align: center; background-color: #EEEEEE; font-weight: bold">Erinn Date &amp; Time
+          </td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;">
+            <a href="https://wiki.mabi.world/view/Time#Daily_Effects" title="Erinn Month"><img alt="Erinn Month" src="https://wiki.mabi.world/images/0/0c/TimerCalender.png" decoding="async" width="40" height="40"></a>
+          </td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top; text-align:center">
+            <span style="display:inline;"><a href="https://wiki.mabi.world/view/Time#Lughnasadh" title="Time">Lughnasadh</a></span>
+          </td>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;">
+            <a href="https://wiki.mabi.world/view/Time" title="Erinn Time"><img alt="Erinn Time" src="https://wiki.mabi.world/images/3/3c/TimerClock.png" decoding="async" width="40" height="40"></a>
+          </td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top">
+            <div class="make-timer-display">
+              <span class="settings">type=clock timeStyle={display:inline-block;} 12hour=true suffix={ am}{ pm} timeFormat=h:mmE entryFormat={%t}</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="4" style="height: 24px; line-height: 24px; text-align: center; background-color: #EEEEEE; font-weight: bold">
+            Server Date &amp; Time (PDT)
+          </td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;"><img alt="Day of the Week" src="https://wiki.mabi.world/images/0/0c/TimerCalender.png" decoding="async" title="Day of the Week" width="40" height="40">
+          </td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top">
+            <div>Thursday</div>
+          </td>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;"><img alt="Server Time" src="https://wiki.mabi.world/images/3/3c/TimerClock.png" decoding="async" title="Server Time" width="40" height="40"></td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top">
+            <div class="make-timer-display">
+              <span class="settings">type=clock timeStyle={display:inline-block;} 12hour=true suffix={ am}{ pm} timeFormat=h:mmS entryFormat={%t}</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+
+    <!--
     <div style="display:inline-block; vertical-align:top; width: 190px; text-wrap: nowrap; overflow:hidden;">
       <div class="make-timer-display">
         <span class="settings">type=list depth=10 timer=countingTimer timeStyle={display:inline-block;padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ssL 12hour=true</span>
       </div>
 
       <br/>
-    
+
       <div class="make-timer-display">
         <span class="settings">type=countdown depth=50 timer=todayTimer timeStyle={display:inline-block; padding-right:10px; width: 75px; text-align:right;} valueStyle={display:inline-block} timeFormat=h:mm:ssS</span>
       </div>
     </div>
 
-    
+
     <div style="display:inline-block; vertical-align:top;">
       <div class="make-timer-display">
         <span class="settings">type=countdown depth=20 timer=todayTimer timeStyle={display:inline-block; padding-right:10px;} valueStyle={display:inline-block} timeFormat=h:mm:ssS hideLeading0=false query=Baltane</span>
       </div>
     </div>
 
-    
+
     <div style="display:inline-block; vertical-align:top;">
       <div class="make-timer-display">
         <span class="settings">type=clock timeStyle={display:inline-block;padding-right:10px;} 12hour=true timeFormat=h:mm:ssL entryFormat={Local: %t}</span>
@@ -38,6 +84,7 @@
         <span class="settings">type=clock timeStyle={display:inline-block;padding-right:10px;} 12hour=true timeFormat=h:mmE entryFormat={Erinn: %t}</span>
       </div>
     </div>
+  -->
 
 
 
@@ -46,7 +93,7 @@
 
 
 
-    
+
     <div style="display:none" class="make-timer">
       <span class="settings">type=rotate id=todayTimer epoch=2016-01-31T00:00:00S changeEvery=00:00:02S label={Today is} labelLink=//wiki.mabinogiworld.com/view/Time#Daily_Effects display=status</span>
       <ul>

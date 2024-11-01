@@ -20,14 +20,16 @@ export class TimerDisplay{
      * - minutes, seconds, and milliseconds are optional.
      * - S for time in server's timezone, L for local time, E for Erinn time
      * 
-     * If is12hour is true, the returned time will be in 12 hour format with AM/PM afterwards.
+     * If is12hour is true, the returned time will be in 12 hour format with suffixam/suffixpm afterwards.
      * 
      * @param {Number} millisecondsParam - Milliseconds since unix epoch
      * @param {String} format - Format to turn the milliseconds into
-     * @param {Boolean} is12hour - Format the milliseconds in 12 hour format with AM/PM afterwards
+     * @param {Boolean} is12hour - Format the milliseconds in 12 hour format
+     * @param {String} suffixam - Text to add after the time in 12 hour format during the first 12 hours of the day
+     * @param {String} suffixpm - Text to add after the time in 12 hour format during the last 12 hours of the day
      * @returns {String} - Returns the formatted time as a string
      */
-    static formatTimeClock(millisecondsParam, format, is12hour){
+    static formatTimeClock(millisecondsParam, format, is12hour, suffixam, suffixpm){
         // Validate parameters
         if(!Number.isInteger(millisecondsParam)) return timerDisplayError(`formatTimeClock is Unable to format milliseconds "${millisecondsParam}". Milliseconds must be a whole number.`);
         if(typeof format !== "string") return timerDisplayError(`formatTimeClock is unable to use format "${format}". Format must be a string.`);
@@ -93,7 +95,7 @@ export class TimerDisplay{
         // Change to 12 hour time
         let period = '';
         if (is12hour) {
-            period = hours >= 12 ? ' PM' : ' AM';
+            period = hours >= 12 ? suffixpm : suffixam;
             hours = hours % 12 || 12; // Convert 0 to 12 for 12 AM
         }
 
@@ -414,6 +416,15 @@ export class TimerDisplay{
             else return timerDisplayCreationError('12hour must be true or false.');
         }
 
+        // Validate suffix
+        let suffixam = '';
+        let suffixpm = '';
+        if('suffix' in args){
+            if(args.suffix.length !== 2) return timerDisplayCreationError('suffix must have 2 values.');
+            suffixam = args.suffix[0];
+            suffixpm = args.suffix[1];
+        }
+
         // Validate entryFormat
         let entryFormat = '%t %v';
         if(displayType === 'clock') entryFormat = '%t';
@@ -466,6 +477,6 @@ export class TimerDisplay{
             query = args.query.slice();
         }
 
-        return {timerId, depth, timer, timeFormat, precision, is12hour, entryFormat, entryStyle, valueStyle, timeStyle, entryClass, valueClass, timeClass, startAtEntry, endAtEntry, query};
+        return {timerId, depth, timer, timeFormat, precision, is12hour, suffixam, suffixpm, entryFormat, entryStyle, valueStyle, timeStyle, entryClass, valueClass, timeClass, startAtEntry, endAtEntry, query};
     }
 }

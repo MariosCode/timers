@@ -10,7 +10,8 @@ import { TimerDisplay } from './TimerDisplay.js'
  * Optionally in settings, a clock timer display may have the following:
  * 
  *  - timeFormat: How to format any time displayed by this timer display. The number of letters is the minimum digit count (padded with 0s). Ends with a S for server time, E for Erinn time, L for local time. See {@link TimerDisplay.formatTimeClock} Default: h:mm:ssS
- *  - 12hour: true or false. If true, time is displayed in 12 hour format with a space and AM/PM at the end. Default: false
+ *  - 12hour: true or false. If true, time is displayed in 12 hour format. Default: false
+ *      >- suffix: Used with 12hour. Expects two values. The first value will be placed after the time during the first 12 hours of the day, the second value after. Example: { am}{ pm}
  *  - entryFormat: How to format the single entry of this display. %t for the time. For example: {The current time is %t.} Default: {%t}
  *  - entryStyle: Adds the given style to the outer div containing the time and additional text from entryFormat.
  *  - timeStyle: Adds the given style to the div containing the time.
@@ -48,10 +49,22 @@ export class ClockTimerDisplay extends TimerDisplay{
         this.precision = validatedParameters.precision;
 
         /**
-         * Whether or not to display the time in 12 hour format with AM/PM at the end
+         * Whether or not to display the time in 12 hour format
          * @type {Boolean}
          */
         this.is12hour = validatedParameters.is12hour;
+
+        /**
+         * Used with 12hour to place text after the time during the first 12 hours of the day
+         * @type {String}
+         */
+        this.suffixam = validatedParameters.suffixam;
+
+        /**
+         * Used with 12hour to place text after the time during the last 12 hours of the day
+         * @type {String}
+         */
+        this.suffixpm = validatedParameters.suffixpm;
 
         /**
          * The format to use for each displayed entry. Example: "{%t %v}"
@@ -229,7 +242,7 @@ export class ClockTimerDisplay extends TimerDisplay{
     redraw(timestamp){
         // Just update the time
         if(this.dataElement){
-            this.dataElement.text(TimerDisplay.formatTimeClock(TIME_PAGE_LOAD + timestamp, this.timeFormat, this.is12hour));
+            this.dataElement.text(TimerDisplay.formatTimeClock(TIME_PAGE_LOAD + timestamp, this.timeFormat, this.is12hour, this.suffixam, this.suffixpm));
         }
     }
 
