@@ -154,6 +154,49 @@ export function parseSettings(input) {
 }
 
 /**
+ * Turns a single list item from a timer into its value and an object of arrays of strings for its settings.
+ * 
+ * @param {String} input - String containing the list item to parse.
+ * 
+ * For example:
+ * 
+ * "Imbolic{key=value}{link=https://wiki.mabi.world/view/Time#Imbolic}"
+ * 
+ * Keys and values can not contain "=", "{", or "}". 
+ * 
+ * The key "value" can not be used as it contains the list item's value ("Imbolic" in the above example).
+ * 
+ * Values can not contain "{" or "}".
+ * 
+ * To assign multiple values to a key, repeat the key. For example "Imbolic{key1=value1}{key1=value2}{key1=value3}"
+ * 
+ * @returns {Object} - Returns an object filled with arrays of strings. Each property name is the setting name. The property name value contains only a string with this list item's value with settings removed.
+ */
+export function parseListSettings(input) {
+    const args = {};
+    args.value = '';
+    // This regex takes the value all the key=value pairs from the settings, ignoring anything that doesn't match the pattern described above.
+    const regex = /^([^{}]+)|{([^={}]+)=([^{}]+)}/g;
+    let match;
+
+    while ((match = regex.exec(input)) !== null) {
+        // The first part of the match (before any {}) is the main value
+        if (match[1] != null) {
+            args.value = match[1].trim();
+        // The second and third capture groups are the setting key and value
+        } else if (match[2] != null && match[3] != null) {
+            if(args[match[2].trim()]){
+                args[match[2].trim()].push(match[3].trim());
+            }else{
+                args[match[2].trim()] = [match[3].trim()];
+            }
+        }
+    }
+
+    return args;
+}
+
+/**
  * Checks if the given string is a valid server date time string, formatted as
  * 
  * yyyy-mm-ddThh:mm:ssS or yyyy-mm-ddThh:mm:ss.sssS for milliseconds, or yyyy-mm-ddThh:mmS

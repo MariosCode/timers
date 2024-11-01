@@ -16,7 +16,7 @@ import { timerDisplayCreationError, timerDisplayError, camelCase } from "../help
  *  - timeFormat: How to format any time displayed by this timer display. The number of letters is the minimum digit count (padded with 0s). Ends with a S for server time, E for Erinn time, L for local time. See {@link TimerDisplay.formatTimeClock} Default: h:mm:ssS
  *  - 12hour: true or false. If true, time is displayed in 12 hour format. Default: false
  *      >- suffix: Used with 12hour. Expects two values. The first value will be placed after the time during the first 12 hours of the day, the second value after. Example: { am}{ pm}
- *  - entryFormat: How to format each entry of the display. %v for entry's value and %t for entry's time. For example: {The next event is %v at %t.} Default: {%t %v}
+ *  - entryFormat: How to format each entry of the display. %v for entry's value and %t for entry's time. %l#_ and %l to wrap text in that number link from this list item. For example: {The next %l1_event%l is %l2_%v%l at %t.} Default: {%t %v}
  *  - entryStyle: Adds the given style to each outer div containing the entry's value, time, and additional text from entryFormat.
  *  - valueStyle: Adds the given style to each div containing the entry's value.
  *  - timeStyle: Adds the given style to each div containing the entry's time.
@@ -167,6 +167,12 @@ export class ListTimerDisplay extends TimerDisplay{
          */
         this.dataElements = [];
 
+        /**
+         * The HTML Elements containing the links created from the entryFormat
+         * @type {JQuery<HTMLElement>[][]}
+         */
+        this.linkElements = [];
+
         // Make sure functions provided as callbacks to requestAnimationFrame don't lose "this" context.
         this.redraw = this.#redraw.bind(this);
 
@@ -235,6 +241,16 @@ export class ListTimerDisplay extends TimerDisplay{
             if(this.dataElements[i*2 + 1]){
                 this.dataElements[i*2 + 1].text(this.timer.list[this.timerData[i*2]]);
             }
+            // Update entry links
+            if(this.linkElements[i].length > 0){
+                for(let k = 0; k < this.linkElements[i].length; k++){
+                    if(this.timer.listLinks[this.timerData[i*2]][this.linkElements[i][k].data('linkIndex')] != null){
+                        this.linkElements[i][k].prop('href', this.timer.listLinks[this.timerData[i*2]][this.linkElements[i][k].data('linkIndex')]);
+                    }else{
+                        this.linkElements[i][k].prop('href', '#');
+                    }
+                }
+            }
         }
         // Allow queueing a new redraw
         this.redrawID = null;
@@ -286,7 +302,7 @@ export class ListTimerDisplay extends TimerDisplay{
         }, {});
 
         // Split entryFormat at the placeholders
-        let templateParts = this.entryFormat.split(/(%v|%t)/);
+        let templateParts = this.entryFormat.split(/(%v|%t|%l\d+_|%l)/);
 
         // Loop through every entry
         for (let i = 0; i < this.depth; i++) {
@@ -295,20 +311,32 @@ export class ListTimerDisplay extends TimerDisplay{
         
             let $valuePart = null;
             let $timePart = null;
+            let $currentLink = null;
+            this.linkElements.push([]);
         
             // Iterate through the templateParts and replace placeholders
             templateParts.forEach(part => {
+                // Beginning of a link
+                if(/^%l\d+_$/.test(part) && !$currentLink){
+                    $currentLink =  $('<a></a>').prop('href', '#');
+                    // Store which link to use in the array of links in the timer for this list item
+                    $currentLink.data('linkIndex', Number(part.slice(2,-1)) - 1);
+                    this.linkElements[this.linkElements.length-1].push($currentLink);
+                    $entry.append($currentLink);
+                // Ending of a link
+                } else if(part === '%l' && $currentLink != null){
+                    $currentLink = null;
                 // Entry time
-                if (part === '%t') {
+                } else if (part === '%t') {
                     $timePart = $('<div></div>').addClass(this.timeClass).css(timeStyleObj);
-                    $entry.append($timePart);
+                    $currentLink != null ? $currentLink.append($timePart) : $entry.append($timePart);
                 // Entry value
                 } else if (part === '%v') {
                     $valuePart = $('<div></div>').addClass(this.valueClass).css(valueStyleObj);
-                    $entry.append($valuePart);
+                    $currentLink != null ? $currentLink.append($valuePart) : $entry.append($valuePart);
                 // Treat other parts as plain text
                 } else {
-                    $entry.append(document.createTextNode(part));
+                    $currentLink != null ? $currentLink.append(document.createTextNode(part)) : $entry.append(document.createTextNode(part));
                 }
             });
         

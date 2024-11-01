@@ -3,7 +3,7 @@ import { TimerDisplay } from '../display/TimerDisplay.js'
 
 import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
     argumentError, timerError, timerDisplayError, // Error logging
-    parseServerDateTime, validateTimeStrings, validateDurationTimeStrings, // Parsing and validation
+    parseListSettings, parseServerDateTime, validateTimeStrings, validateDurationTimeStrings, // Parsing and validation
     convertTimeStringToFullServerDurationTimeString, convertTimeStringToMillisecondsAfterMidnight, // Conversions
     dateToMillisecondsAfterServerMidnight, arrayFindLast
  } from '../helper/utils.js';
@@ -34,22 +34,25 @@ import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
  * The rotate timer will go through the given list in order.
  * 
  * Rotate type timers must have a ul and/or an ol element, with at least 1 li element. This is the list the timer will rotate through.
+ * See {@link parseListSettings} for details on adding settings to individual list items. Valid list item settings are:
+ * 
+ *  - link: assigns a link to a list item
  * 
  * The following settings are required in an element with the class "settings":
  * 
- * - epoch: A time the rotation started at the first item in the provided list. For example: "2016-01-31T00:00:00.000S". Must be in Server time and include the date.
- *   >- For changeAt rotate timers, the epoch can be any time the rotation was at the first item in the list. For changeEvery rotate timers, the epoch should be the exact time the rotation was at the beginning of first item in the list.
- * - id: A unique ID to give to this timer so displays can access it
+ *  - epoch: A time the rotation started at the first item in the provided list. For example: "2016-01-31T00:00:00.000S". Must be in Server time and include the date.
+ *      >- For changeAt rotate timers, the epoch can be any time the rotation was at the first item in the list. For changeEvery rotate timers, the epoch should be the exact time the rotation was at the beginning of first item in the list.
+ *  - id: A unique ID to give to this timer so displays can access it
  * 
  * And one of the following:
  * 
- * - changeAt: A value or multiple values. Each value is the time to rotate the timer to the next item in the list. For example "{6:00E}{8:00E}{12:00E}", or "{6:00S}{8:00:00.000S}", or "6:00:00S". Can also be "sunshift".
- * - changeEvery: A single value for how often to rotate. For example "6:00S" or "6:00:00.000S" (every 6 real time hours), or "2:00E" (every 2 Erinn time hours).
+ *  - changeAt: A value or multiple values. Each value is the time to rotate the timer to the next item in the list. For example "{6:00E}{8:00E}{12:00E}", or "{6:00S}{8:00:00.000S}", or "6:00:00S". Can also be "sunshift".
+ *  - changeEvery: A single value for how often to rotate. For example "6:00S" or "6:00:00.000S" (every 6 real time hours), or "2:00E" (every 2 Erinn time hours).
  * 
  * Optionally in settings, a rotate timer may have the following:
  * 
- * - filter: A filter to apply to the timer's output. Valid filters are:
- *   >- compress: Compresses the entries such that it only outputs unique ones and adjusts timing accordingly.
+ *  - filter: A filter to apply to the timer's output. Valid filters are:
+ *      >- compress: Compresses the entries such that it only outputs unique ones and adjusts timing accordingly.
  */
 export class RotateTimer extends Timer{
     // Prevent the use of the constructor so this class can only be created with RotateTimer.createInstance
@@ -62,6 +65,7 @@ export class RotateTimer extends Timer{
      * @param {Object} obj - Object containing all parameters
      * @param {Object.<String, String[]>} obj.args - The args object created from the element with the "settings" class
      * @param {String[]} obj.list - List created from all li elements in a ul or ol element
+     * @param {String[][]} obj.listLinks - Link setting from each list item
      * @param {Epoch} obj.epoch - Object containing the parsed epoch Date from the epoch provided in args
      * @param {Boolean} obj.compress - Whether or not to apply the compress filter
      * @param {String[]} obj.changeAt - Parsed args.changeAt times
@@ -73,7 +77,7 @@ export class RotateTimer extends Timer{
      * @param {Number} obj.timeout - Timeout ID for the next execution of updateRotation so it can be canceled
      * @private  
      */  
-    constructor({args, list, epoch, compress, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout}){
+    constructor({args, list, listLinks, epoch, compress, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout}){
         if(!RotateTimer._allowConstructor) return timerError(`Rotate timers must be instantiated with RotateTimer.createInstance() instead of new RotateTimer()`);
         RotateTimer._allowConstructor = false;
 
@@ -95,6 +99,8 @@ export class RotateTimer extends Timer{
         this.rotation = rotation;
         this.rotationData = rotationData;
         this.timeout = timeout;
+
+        this.listLinks = listLinks;
 
         // New properties
         if('changeEvery' in args){
@@ -149,6 +155,8 @@ export class RotateTimer extends Timer{
         let validatedParameters = this.#validateParameters({args, list});
         if(!validatedParameters) return null;
 
+        let newList = validatedParameters.listValues;
+        let listLinks = validatedParameters.listLinks;
         let epoch = validatedParameters.epoch;
         let compress = validatedParameters.compress
         let changeAt = validatedParameters.updatedChangeAt;
@@ -164,7 +172,7 @@ export class RotateTimer extends Timer{
         
         // Create and return the rotate timer instance
         RotateTimer._allowConstructor = true;
-        return new RotateTimer({args, list, epoch, compress, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout});
+        return new RotateTimer({args, list:newList, listLinks, epoch, compress, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout});
     }
 
     /**
@@ -276,9 +284,6 @@ export class RotateTimer extends Timer{
         let epoch = parseServerDateTime(args.epoch[0]);
         if(!epoch) return argumentError('Rotate type timers requires a valid Server time epoch. Valid formats are yyyy-mm-ddThh:mm:ss.sssS or yyyy-mm-ddThh:mm:ssS or yyyy-mm-ddThh:mmS with the capital T and S being the literal letters. This should be in the server time zone.');
 
-        // Validate list
-        if(list.length < 1) return argumentError('Rotate type timers must have at least 1 item in its list.');
-
         // Validate filters
         let compress = false;
         if('compress' in args){
@@ -295,6 +300,36 @@ export class RotateTimer extends Timer{
         // Assign changeEvery/changeAt time
         let changeEvery = 'changeEvery' in args ? args.changeEvery.slice() : null;
         let changeAt = 'changeAt' in args ? args.changeAt.slice() : null;
+
+        // Validate list
+        if(list.length < 1) return argumentError('Rotate type timers must have at least 1 item in its list.');
+        // Separate and store value and settings from each list item
+        let listValues = [];
+        let listLinks = [];
+        list.forEach((value) => {
+            let result = parseListSettings(value);
+            listValues.push(result.value);
+            // Sanitize links
+            listLinks.push([]);
+            if(result.link){
+                result.link.forEach( value => {
+                    try{
+                        let testUrl = new URL(value, window.location.origin);
+                        // Protocol whitelist to prevent the use of javascript:, file:, data:, tel:, etc.
+                        if(['http:', 'https:'].includes(testUrl.protocol)){
+                            listLinks[listLinks.length-1].push(value);
+                        }else{
+                            argumentError(`In a Rotate type timer\'s list, a provided link does not use a valid protocol. Removing link. Valid protocols are http and https. Link: ${value}`);
+                            listLinks[listLinks.length-1].push('#');
+                        }
+                    } catch (e) {
+                        argumentError(`In a Rotate type timer\'s list, a provided link is not valid. Removing link. Link: ${value}`);
+                        listLinks[listLinks.length-1].push('#');
+                    }
+                });
+            }
+        });
+
         
         // changeAt validation
         //================================================================================================================================================
@@ -302,7 +337,7 @@ export class RotateTimer extends Timer{
         let erinnTimes = [];
         let serverTimes = [];
         if(changeAt){
-            changeAt.forEach((str) => {
+            changeAt.forEach(str => {
                 // Swap sunshift in changeAt with 06:00E and 18:00E
                 if (str.toLowerCase() === "sunshift") updatedChangeAt.push('06:00E','18:00E');
                 // If not sunshift, keep this string as it is
@@ -343,7 +378,7 @@ export class RotateTimer extends Timer{
             if(changeEveryDuration.milliseconds < 1) return argumentError(`Rotate timers with a changeEvery can not have a duration of 0ms or below. changeEvery value: ${changeEvery[0]}`);
         }
 
-        return {epoch, compress, updatedChangeAt, erinnTimes, serverTimes, changeEveryDuration};
+        return {listValues, listLinks, epoch, compress, updatedChangeAt, erinnTimes, serverTimes, changeEveryDuration};
     }
 
     /**
