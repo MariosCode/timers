@@ -1,4 +1,4 @@
-import { TIME_PAGE_LOAD, SERVER_TIMEZONE, ERINN_TIME_OFFSET, TIME_PER_ERINN_MINUTE, TIME_PER_ERINN_HOUR, TIME_PER_ERINN_DAY, camelCase } from '../helper/utils.js';
+import { TIME_PAGE_LOAD, SERVER_TIMEZONE, ERINN_TIME_OFFSET, TIME_PER_ERINN_MINUTE, TIME_PER_ERINN_HOUR, TIME_PER_ERINN_DAY, ERINN_MONTHS, WEEKDAYS, camelCase, dateToMillisecondsUntilNextServerMidnight } from '../helper/utils.js';
 import { TimerDisplay } from './TimerDisplay.js'
 
 /**  
@@ -12,6 +12,7 @@ import { TimerDisplay } from './TimerDisplay.js'
  *  - timeFormat: How to format any time displayed by this timer display. The number of letters is the minimum digit count (padded with 0s). Ends with a S for server time, E for Erinn time, L for local time. See {@link TimerDisplay.formatTimeClock} Default: h:mm:ssS
  *  - 12hour: true or false. If true, time is displayed in 12 hour format. Default: false
  *      >- suffix: Used with 12hour. Expects two values. The first value will be placed after the time during the first 12 hours of the day, the second value after. Example: { am}{ pm}
+ *  - weekday: true or false. Causes this clock timer to output the current weekday as its time instead of the time of day. For Erinn clocks, this would show the current month. Default: false
  *  - entryFormat: How to format the single entry of this display. %t for the time. For example: {The current time is %t.} Default: {%t}
  *  - entryStyle: Adds the given style to the outer div containing the time and additional text from entryFormat.
  *  - timeStyle: Adds the given style to the div containing the time.
@@ -92,6 +93,11 @@ export class ClockTimerDisplay extends TimerDisplay{
          * @type {String}
          */
         this.timeClass = validatedParameters.timeClass;
+
+        /**
+         * Causes precision, timeFormat, and 12hour to all be ignored. Instead the current time displayed is the weekday (or the month, if Erinn time is being used).
+         */
+        this.weekday = validatedParameters.weekday;
         
         /**
          * The original arguments from the settings element
@@ -216,16 +222,29 @@ export class ClockTimerDisplay extends TimerDisplay{
             this.redraw(timestamp);
             // Determine precision in milliseconds
             let precision = 1;
-            if(this.timeFormat[this.timeFormat.length - 1] === "E"){
-                precision = (this.precision === 's' ? Math.floor(TIME_PER_ERINN_MINUTE/60) : 
-                            (this.precision === 'm' ? TIME_PER_ERINN_MINUTE : TIME_PER_ERINN_HOUR));
+            if(this.weekday){
+                // If weekday is true, precision isn't used.
+                if(this.timeFormat[this.timeFormat.length - 1] === "L"){
+                    // The next update is at Local time midnight
+                    this.nextUpdate = Math.max(new Date(currTime).setHours(24,0,0,0) , currTime + 1);
+                }else{
+                    // The next update is at Server time midnight
+                    this.nextUpdate = Math.max(currTime + dateToMillisecondsUntilNextServerMidnight(new Date(currTime)) , currTime + 1);
+                }
             }else{
-                precision = (this.precision === '.s' ? 1 : 
-                            (this.precision === 's' ? 1000 : 
-                            (this.precision === 'm' ? 60000 : 3600000)));
+                if(this.timeFormat[this.timeFormat.length - 1] === "E"){
+                    precision = (this.precision === 's' ? Math.floor(TIME_PER_ERINN_MINUTE/60) : 
+                                (this.precision === 'm' ? TIME_PER_ERINN_MINUTE : 
+                                (this.precision === 'h' ? TIME_PER_ERINN_HOUR : TIME_PER_ERINN_DAY)));
+                }else{
+                    precision = (this.precision === '.s' ? 1 : 
+                                (this.precision === 's' ? 1000 : 
+                                (this.precision === 'm' ? 60000 : 
+                                (this.precision === 'h' ? 3600000 : 86400000))));
+                }
+                // Determine when the next scheduled time should be, minimum 1ms from now
+                this.nextUpdate = Math.max(currTime + precision - (currTime % precision) , currTime + 1);
             }
-            // Determine when the next scheduled time should be, minimum 1ms from now
-            this.nextUpdate = Math.max(currTime + precision - (currTime % precision) , currTime + 1);
         }
         // Queue the timeout again at the next scheduled time.
         clearTimeout(this.timeout);
@@ -240,9 +259,25 @@ export class ClockTimerDisplay extends TimerDisplay{
      * Note: The display should be initialized with {@link ClockTimerDisplay.initializeElements|this.initializeElements} before redrawing. redraw assumes the display's elements already exist.
      */
     redraw(timestamp){
+        // Remove decimal from timestamp
+        timestamp = Math.floor(timestamp);
         // Just update the time
         if(this.dataElement){
-            this.dataElement.text(TimerDisplay.formatTimeClock(TIME_PAGE_LOAD + timestamp, this.timeFormat, this.is12hour, this.suffixam, this.suffixpm));
+            if(!this.weekday){
+                this.dataElement.text(TimerDisplay.formatTimeClock(TIME_PAGE_LOAD + timestamp, this.timeFormat, this.is12hour, this.suffixam, this.suffixpm));
+            // Show weekday instead of time
+            } else {
+                // Weekday in local time
+                if(this.timeFormat[this.timeFormat.length - 1] === "L"){
+                    this.dataElement.text(WEEKDAYS[new Date(TIME_PAGE_LOAD + timestamp).getDay()]);
+                // Weekday in Server timezone
+                }else if(this.timeFormat[this.timeFormat.length - 1] === "S"){
+                    this.dataElement.text(new Intl.DateTimeFormat('en-US',{ weekday:'long', timeZone:SERVER_TIMEZONE}).format(new Date(TIME_PAGE_LOAD + timestamp)));
+                }else{
+                    //ERINN_MONTHS
+                    this.dataElement.text(ERINN_MONTHS[WEEKDAYS.indexOf(new Intl.DateTimeFormat('en-US',{ weekday:'long', timeZone:SERVER_TIMEZONE}).format(new Date(TIME_PAGE_LOAD + timestamp)))]);
+                }
+            }
         }
     }
 
@@ -254,6 +289,15 @@ export class ClockTimerDisplay extends TimerDisplay{
         // Validate all args common to most displays
         let returnObject = TimerDisplay.argValidationAndConversion(args , "clock");
         if(!returnObject) return null;
+
+        // Validate weekday
+        returnObject.weekday = false;
+        if('weekday' in args){
+            if(args.weekday.length > 1) return timerDisplayCreationError('weekday can not have more than 1 value.');
+            if(args.weekday[0].toLowerCase() === 'false') returnObject.weekday = false;
+            else if(args.weekday[0].toLowerCase() === 'true') returnObject.weekday = true;
+            else return timerDisplayCreationError('weekday must be true or false.');
+        }
         
         return returnObject;
     }

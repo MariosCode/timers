@@ -8,10 +8,57 @@
   </head>
   <body>
 
-    <table width="300px" style="border: 1px solid #CCCCCC; font-size: 12px;">
+    <table width="300px" style="border: 1px solid #CCCCCC; font-size: 12px; float: left; margin:10px;">
       <tbody>
         <tr>
-          <td colspan="4" style="height: 24px; line-height: 24px; text-align: center; background-color: #EEEEEE; font-weight: bold">Erinn Date &amp; Time
+          <td colspan="4" style="height: 24px; line-height: 24px; text-align: center; background-color: #EEEEEE; font-weight: bold">
+            Real Days and Times
+          </td>
+        </tr>
+        <tr>
+        <tr>
+          <td colspan="4" style="height: 24px; line-height: 24px; text-align: center; background-color: #EEEEEE; font-weight: bold">
+            Local Day &amp; Time
+          </td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;"><img alt="Day of the Week" src="https://wiki.mabi.world/images/0/0c/TimerCalender.png" decoding="async" title="Day of the Week" width="40" height="40">
+          </td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top; text-align:center">
+            <div style="display:inline;" class="make-timer-display">
+              <span class="settings">type=clock entryStyle={display:inline-block;} timeFormat=h:mmL weekday=true entryFormat={%t}</span>
+            </div>
+          </td>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;"><img alt="Server Time" src="https://wiki.mabi.world/images/3/3c/TimerClock.png" decoding="async" title="Server Time" width="40" height="40"></td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top">
+            <div class="make-timer-display">
+              <span class="settings">type=clock entryStyle={display:inline-block;} 12hour=true suffix={ am}{ pm} timeFormat=h:mmL entryFormat={%t}</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="4" style="height: 24px; line-height: 24px; text-align: center; background-color: #EEEEEE; font-weight: bold">
+            Server Day &amp; Time
+          </td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;"><img alt="Day of the Week" src="https://wiki.mabi.world/images/0/0c/TimerCalender.png" decoding="async" title="Day of the Week" width="40" height="40">
+          </td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top; text-align:center">
+            <div style="display:inline;" class="make-timer-display">
+              <span class="settings">type=clock entryStyle={display:inline-block;} timeFormat=h:mmS weekday=true entryFormat={%t}</span>
+            </div>
+          </td>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;"><img alt="Server Time" src="https://wiki.mabi.world/images/3/3c/TimerClock.png" decoding="async" title="Server Time" width="40" height="40"></td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top">
+            <div class="make-timer-display">
+              <span class="settings">type=clock entryStyle={display:inline-block;} 12hour=true suffix={ am}{ pm} timeFormat=h:mmS entryFormat={%t}</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="4" style="height: 24px; line-height: 24px; text-align: center; background-color: #EEEEEE; font-weight: bold">
+            Erinn Month &amp; Time
           </td>
         </tr>
         <tr>
@@ -20,7 +67,7 @@
           </td>
           <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top; text-align:center">
             <div style="display:inline;" class="make-timer-display">
-              <span class="settings">type=list timer=todayTimer timeStyle={display:inline;} entryFormat={%l1_%v%l}</span>
+              <span class="settings">type=list timer=todayTimer entryStyle={display:inline;} entryFormat={%l1_%v%l}</span> <!-- A rotate timer is used here instead of a clock so we can use links -->
             </div>
           </td>
           <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;">
@@ -28,25 +75,83 @@
           </td>
           <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top">
             <div class="make-timer-display">
-              <span class="settings">type=clock timeStyle={display:inline-block;} 12hour=true suffix={ am}{ pm} timeFormat=h:mmE entryFormat={%t}</span>
+              <span class="settings">type=clock entryStyle={display:inline-block;} 12hour=true suffix={ am}{ pm} timeFormat=h:mmE entryFormat={%t}</span>
             </div>
           </td>
         </tr>
+      </tbody>
+    </table>
+
+
+    
+    <table width="300px" style="border: 1px solid #CCCCCC; font-size: 12px; float: left; margin:10px;">
+      <tbody>
         <tr>
           <td colspan="4" style="height: 24px; line-height: 24px; text-align: center; background-color: #EEEEEE; font-weight: bold">
-            Server Date &amp; Time (PDT)
+            Rapidly Changing Days To Show Updating Links
+          </td>
+        </tr>
+        <tr>
+        <tr>
+          <td colspan="4" style="height: 24px; line-height: 24px; text-align: center; background-color: #EEEEEE; font-weight: bold">
+            Local Day &amp; Time
           </td>
         </tr>
         <tr>
           <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;"><img alt="Day of the Week" src="https://wiki.mabi.world/images/0/0c/TimerCalender.png" decoding="async" title="Day of the Week" width="40" height="40">
           </td>
           <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top; text-align:center">
-            <div>Thursday</div>
+            <div style="display:inline;" class="make-timer-display">
+              <span class="settings">type=list timer=rapidWeekdayTimer entryStyle={display:inline;} entryFormat={%l1_%v%l}</span>
+            </div>
           </td>
           <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;"><img alt="Server Time" src="https://wiki.mabi.world/images/3/3c/TimerClock.png" decoding="async" title="Server Time" width="40" height="40"></td>
           <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top">
             <div class="make-timer-display">
-              <span class="settings">type=clock timeStyle={display:inline-block;} 12hour=true suffix={ am}{ pm} timeFormat=h:mmS entryFormat={%t}</span>
+              <span class="settings">type=clock entryStyle={display:inline-block;} 12hour=true suffix={ am}{ pm} timeFormat=h:mmL entryFormat={%t}</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="4" style="height: 24px; line-height: 24px; text-align: center; background-color: #EEEEEE; font-weight: bold">
+            Server Day &amp; Time
+          </td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;"><img alt="Day of the Week" src="https://wiki.mabi.world/images/0/0c/TimerCalender.png" decoding="async" title="Day of the Week" width="40" height="40">
+          </td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top; text-align:center">
+            <div style="display:inline;" class="make-timer-display">
+              <span class="settings">type=list timer=rapidWeekdayTimer entryStyle={display:inline;} entryFormat={%l1_%v%l}</span>
+            </div>
+          </td>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;"><img alt="Server Time" src="https://wiki.mabi.world/images/3/3c/TimerClock.png" decoding="async" title="Server Time" width="40" height="40"></td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top">
+            <div class="make-timer-display">
+              <span class="settings">type=clock entryStyle={display:inline-block;} 12hour=true suffix={ am}{ pm} timeFormat=h:mmS entryFormat={%t}</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="4" style="height: 24px; line-height: 24px; text-align: center; background-color: #EEEEEE; font-weight: bold">
+            Erinn Month &amp; Time
+          </td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;">
+            <a href="https://wiki.mabi.world/view/Time#Daily_Effects" title="Erinn Month"><img alt="Erinn Month" src="https://wiki.mabi.world/images/0/0c/TimerCalender.png" decoding="async" width="40" height="40"></a>
+          </td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top; text-align:center">
+            <div style="display:inline;" class="make-timer-display">
+              <span class="settings">type=list timer=rapidTodayTimer entryStyle={display:inline;} entryFormat={%l1_%v%l}</span>
+            </div>
+          </td>
+          <td style="white-space:nowrap;width:1%; height: 40px; vertical-align: top; line-height: 40px; text-align: center;">
+            <a href="https://wiki.mabi.world/view/Time" title="Erinn Time"><img alt="Erinn Time" src="https://wiki.mabi.world/images/3/3c/TimerClock.png" decoding="async" width="40" height="40"></a>
+          </td>
+          <td style="height: 40px; line-height: 20px; padding-top: 12px; vertical-align: top">
+            <div class="make-timer-display">
+              <span class="settings">type=clock entryStyle={display:inline-block;} 12hour=true suffix={ am}{ pm} timeFormat=h:mmE entryFormat={%t}</span>
             </div>
           </td>
         </tr>
@@ -97,21 +202,46 @@
 
 
     <div style="display:none" class="make-timer">
-      <span class="settings">type=rotate id=todayTimer epoch=2016-01-31T00:00:00S changeEvery=00:00:03S</span>
+      <span class="settings">type=rotate id=todayTimer epoch=2016-01-31T00:00:00S changeEvery=24:00:00S</span>
       <ul>
-        <li>Imbolic{link=https://wiki.mabi.world/view/Time#Imbolic}{link=test}</li>
+        <li>Imbolic{link=https://wiki.mabi.world/view/Time#Imbolic}</li>
         <li>Alban Eiler{link=https://wiki.mabi.world/view/Time#Alban_Eiler}</li>
         <li>Baltane{link=https://wiki.mabi.world/view/Time#Baltane}</li>
         <li>Alban Heruin{link=https://wiki.mabi.world/view/Time#Alban_Heruin}</li>
         <li>Lughnasadh{link=https://wiki.mabi.world/view/Time#Lughnasadh}</li>
         <li>Alban Elved{link=https://wiki.mabi.world/view/Time#Alban_Elved}</li>
         <li>Samhain{link=https://wiki.mabi.world/view/Time#Samhain}</li>
-        <li>Debugging{link=javascript:alert("oh no")}</li>
       </ul>
     </div>
 
     <div style="display:none" class="make-timer">
-      <span class="settings">type=rotate id=countingTimer epoch=2016-01-31T00:00:00S changeAt={0:0E}{0:5E}{0:10E}{0:15E}{0:20E}{0:25E}{0:30E}{0:35E}{0:40E}{0:45E}{0:50E}{0:55E}{1:0E}{1:5E}{1:10E}{1:15E}{1:20E}{1:25E}{1:30E}{1:35E}{1:40E}{1:45E}{1:50E}{1:55E}{2:0E}{2:5E}{2:10E}{2:15E}{2:20E}{2:25E}{2:30E}{2:35E}{2:40E}{2:45E}{2:50E}{2:55E}{3:0E}{3:5E}{3:10E}{3:15E}{3:20E}{3:25E}{3:30E}{3:35E}{3:40E}{3:45E}{3:50E}{3:55E}{4:0E}{4:5E}{4:10E}{4:15E}{4:20E}{4:25E}{4:30E}{4:35E}{4:40E}{4:45E}{4:50E}{4:55E}{5:0E}{5:5E}{5:10E}{5:15E}{5:20E}{5:25E}{5:30E}{5:35E}{5:40E}{5:45E}{5:50E}{5:55E}{6:0E}{6:5E}{6:10E}{6:15E}{6:20E}{6:25E}{6:30E}{6:35E}{6:40E}{6:45E}{6:50E}{6:55E}{7:0E}{7:5E}{7:10E}{7:15E}{7:20E}{7:25E}{7:30E}{7:35E}{7:40E}{7:45E}{7:50E}{7:55E}{8:0E}{8:5E}{8:10E}{8:15E}{8:20E}{8:25E}{8:30E}{8:35E}{8:40E}{8:45E}{8:50E}{8:55E}{9:0E}{9:5E}{9:10E}{9:15E}{9:20E}{9:25E}{9:30E}{9:35E}{9:40E}{9:45E}{9:50E}{9:55E}{10:0E}{10:5E}{10:10E}{10:15E}{10:20E}{10:25E}{10:30E}{10:35E}{10:40E}{10:45E}{10:50E}{10:55E}{11:0E}{11:5E}{11:10E}{11:15E}{11:20E}{11:25E}{11:30E}{11:35E}{11:40E}{11:45E}{11:50E}{11:55E}{12:0E}{12:5E}{12:10E}{12:15E}{12:20E}{12:25E}{12:30E}{12:35E}{12:40E}{12:45E}{12:50E}{12:55E}{13:0E}{13:5E}{13:10E}{13:15E}{13:20E}{13:25E}{13:30E}{13:35E}{13:40E}{13:45E}{13:50E}{13:55E}{14:0E}{14:5E}{14:10E}{14:15E}{14:20E}{14:25E}{14:30E}{14:35E}{14:40E}{14:45E}{14:50E}{14:55E}{15:0E}{15:5E}{15:10E}{15:15E}{15:20E}{15:25E}{15:30E}{15:35E}{15:40E}{15:45E}{15:50E}{15:55E}{16:0E}{16:5E}{16:10E}{16:15E}{16:20E}{16:25E}{16:30E}{16:35E}{16:40E}{16:45E}{16:50E}{16:55E}{17:0E}{17:5E}{17:10E}{17:15E}{17:20E}{17:25E}{17:30E}{17:35E}{17:40E}{17:45E}{17:50E}{17:55E}{18:0E}{18:5E}{18:10E}{18:15E}{18:20E}{18:25E}{18:30E}{18:35E}{18:40E}{18:45E}{18:50E}{18:55E}{19:0E}{19:5E}{19:10E}{19:15E}{19:20E}{19:25E}{19:30E}{19:35E}{19:40E}{19:45E}{19:50E}{19:55E}{20:0E}{20:5E}{20:10E}{20:15E}{20:20E}{20:25E}{20:30E}{20:35E}{20:40E}{20:45E}{20:50E}{20:55E}{21:0E}{21:5E}{21:10E}{21:15E}{21:20E}{21:25E}{21:30E}{21:35E}{21:40E}{21:45E}{21:50E}{21:55E}{22:0E}{22:5E}{22:10E}{22:15E}{22:20E}{22:25E}{22:30E}{22:35E}{22:40E}{22:45E}{22:50E}{22:55E}{23:0E}{23:5E}{23:10E}{23:15E}{23:20E}{23:25E}{23:30E}{23:35E}{23:40E}{23:45E}{23:50E}{23:55E} label={Today is} labelLink=//wiki.mabinogiworld.com/view/Time#Daily_Effects display=status</span>
+      <span class="settings">type=rotate id=rapidTodayTimer epoch=2016-01-31T00:00:00S changeEvery=00:00:03S</span>
+      <ul>
+        <li>Imbolic{link=https://wiki.mabi.world/view/Time#Imbolic}</li>
+        <li>Alban Eiler{link=https://wiki.mabi.world/view/Time#Alban_Eiler}</li>
+        <li>Baltane{link=https://wiki.mabi.world/view/Time#Baltane}</li>
+        <li>Alban Heruin{link=https://wiki.mabi.world/view/Time#Alban_Heruin}</li>
+        <li>Lughnasadh{link=https://wiki.mabi.world/view/Time#Lughnasadh}</li>
+        <li>Alban Elved{link=https://wiki.mabi.world/view/Time#Alban_Elved}</li>
+        <li>Samhain{link=https://wiki.mabi.world/view/Time#Samhain}</li>
+      </ul>
+    </div>
+
+    <div style="display:none" class="make-timer">
+      <span class="settings">type=rotate id=rapidWeekdayTimer epoch=2016-01-31T00:00:00S changeEvery=00:00:03S</span>
+      <ul>
+        <li>Sunday{link=https://en.wikipedia.org/wiki/Sunday}</li>
+        <li>Monday{link=https://en.wikipedia.org/wiki/Monday}</li>
+        <li>Tuesday{link=https://en.wikipedia.org/wiki/Tuesday}</li>
+        <li>Wednesday{link=https://en.wikipedia.org/wiki/Wednesday}</li>
+        <li>Thursday{link=https://en.wikipedia.org/wiki/Thursday}</li>
+        <li>Friday{link=https://en.wikipedia.org/wiki/Friday}</li>
+        <li>Saturday{link=https://en.wikipedia.org/wiki/Saturday}</li>
+      </ul>
+    </div>
+
+    <div style="display:none" class="make-timer">
+      <span class="settings">type=rotate id=countingTimer epoch=2016-01-31T00:00:00S changeAt={0:0E}{0:5E}{0:10E}{0:15E}{0:20E}{0:25E}{0:30E}{0:35E}{0:40E}{0:45E}{0:50E}{0:55E}{1:0E}{1:5E}{1:10E}{1:15E}{1:20E}{1:25E}{1:30E}{1:35E}{1:40E}{1:45E}{1:50E}{1:55E}{2:0E}{2:5E}{2:10E}{2:15E}{2:20E}{2:25E}{2:30E}{2:35E}{2:40E}{2:45E}{2:50E}{2:55E}{3:0E}{3:5E}{3:10E}{3:15E}{3:20E}{3:25E}{3:30E}{3:35E}{3:40E}{3:45E}{3:50E}{3:55E}{4:0E}{4:5E}{4:10E}{4:15E}{4:20E}{4:25E}{4:30E}{4:35E}{4:40E}{4:45E}{4:50E}{4:55E}{5:0E}{5:5E}{5:10E}{5:15E}{5:20E}{5:25E}{5:30E}{5:35E}{5:40E}{5:45E}{5:50E}{5:55E}{6:0E}{6:5E}{6:10E}{6:15E}{6:20E}{6:25E}{6:30E}{6:35E}{6:40E}{6:45E}{6:50E}{6:55E}{7:0E}{7:5E}{7:10E}{7:15E}{7:20E}{7:25E}{7:30E}{7:35E}{7:40E}{7:45E}{7:50E}{7:55E}{8:0E}{8:5E}{8:10E}{8:15E}{8:20E}{8:25E}{8:30E}{8:35E}{8:40E}{8:45E}{8:50E}{8:55E}{9:0E}{9:5E}{9:10E}{9:15E}{9:20E}{9:25E}{9:30E}{9:35E}{9:40E}{9:45E}{9:50E}{9:55E}{10:0E}{10:5E}{10:10E}{10:15E}{10:20E}{10:25E}{10:30E}{10:35E}{10:40E}{10:45E}{10:50E}{10:55E}{11:0E}{11:5E}{11:10E}{11:15E}{11:20E}{11:25E}{11:30E}{11:35E}{11:40E}{11:45E}{11:50E}{11:55E}{12:0E}{12:5E}{12:10E}{12:15E}{12:20E}{12:25E}{12:30E}{12:35E}{12:40E}{12:45E}{12:50E}{12:55E}{13:0E}{13:5E}{13:10E}{13:15E}{13:20E}{13:25E}{13:30E}{13:35E}{13:40E}{13:45E}{13:50E}{13:55E}{14:0E}{14:5E}{14:10E}{14:15E}{14:20E}{14:25E}{14:30E}{14:35E}{14:40E}{14:45E}{14:50E}{14:55E}{15:0E}{15:5E}{15:10E}{15:15E}{15:20E}{15:25E}{15:30E}{15:35E}{15:40E}{15:45E}{15:50E}{15:55E}{16:0E}{16:5E}{16:10E}{16:15E}{16:20E}{16:25E}{16:30E}{16:35E}{16:40E}{16:45E}{16:50E}{16:55E}{17:0E}{17:5E}{17:10E}{17:15E}{17:20E}{17:25E}{17:30E}{17:35E}{17:40E}{17:45E}{17:50E}{17:55E}{18:0E}{18:5E}{18:10E}{18:15E}{18:20E}{18:25E}{18:30E}{18:35E}{18:40E}{18:45E}{18:50E}{18:55E}{19:0E}{19:5E}{19:10E}{19:15E}{19:20E}{19:25E}{19:30E}{19:35E}{19:40E}{19:45E}{19:50E}{19:55E}{20:0E}{20:5E}{20:10E}{20:15E}{20:20E}{20:25E}{20:30E}{20:35E}{20:40E}{20:45E}{20:50E}{20:55E}{21:0E}{21:5E}{21:10E}{21:15E}{21:20E}{21:25E}{21:30E}{21:35E}{21:40E}{21:45E}{21:50E}{21:55E}{22:0E}{22:5E}{22:10E}{22:15E}{22:20E}{22:25E}{22:30E}{22:35E}{22:40E}{22:45E}{22:50E}{22:55E}{23:0E}{23:5E}{23:10E}{23:15E}{23:20E}{23:25E}{23:30E}{23:35E}{23:40E}{23:45E}{23:50E}{23:55E}</span>
       <ul>
         <li>1</li>
         <li>2</li>

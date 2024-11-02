@@ -30,6 +30,16 @@ export const TIME_PER_ERINN_DAY = TIME_PER_ERINN_HOUR*24;
  */
 export const ERINN_TIME_OFFSET = TIME_PER_ERINN_HOUR*8;
 
+/**
+ * Erinn months where index 0 is for the server timezone's Sunday
+ */
+export const ERINN_MONTHS = ['Imbolic', 'Alban Eiler', 'Baltane', 'Alban Heruin', 'Lughnasadh', 'Alban Elved', 'Samhain'];
+
+/**
+ * Days of the week. Used to turn Date.getDay() into a weekday without having to get Intl.DateTimeFormat involved
+ */
+export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 
 /**
  * Handles invalid arguments in timers. Prints
@@ -510,7 +520,7 @@ export function convertToErinnTimeString(timeString){
 }
 
 /**
- * Takes a Date object and returns the milliseconds after the server timezone's midnight for that Date.
+ * Takes a Date object and returns the milliseconds after the server timezone's midnight
  * @param {Date} date 
  * @returns {Number}
  */
@@ -531,6 +541,32 @@ export function dateToMillisecondsAfterServerMidnight(date){
     const minute = parseInt(parts.find(p => p.type === 'minute').value);
     const second = parseInt(parts.find(p => p.type === 'second').value);
     const millisecond = parseInt(parts.find(p => p.type === 'fractionalSecond').value);
+
+    return hour*3600000 + minute*60000 + second*1000 + millisecond;
+}
+
+/**
+ * Takes a Date object and returns the milliseconds until the next server timezone's midnight
+ * @param {Date} date 
+ * @returns {Number}
+ */
+export function dateToMillisecondsUntilNextServerMidnight(date){
+    // Create the formatter in the server's timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: SERVER_TIMEZONE,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3,
+        hour12: false
+    });
+
+    // Get the parts of the date
+    const parts = formatter.formatToParts(date);
+
+    // Extract the parts we need
+    const hour = 23 - parseInt(parts.find(p => p.type === 'hour').value);
+    const minute = 59 - parseInt(parts.find(p => p.type === 'minute').value);
+    const second =  59 - parseInt(parts.find(p => p.type === 'second').value);
+    const millisecond = 1000 - parseInt(parts.find(p => p.type === 'fractionalSecond').value);
 
     return hour*3600000 + minute*60000 + second*1000 + millisecond;
 }
