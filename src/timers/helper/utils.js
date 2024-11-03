@@ -28,7 +28,7 @@ export const TIME_PER_ERINN_DAY = TIME_PER_ERINN_HOUR*24;
  * In milliseconds
  * @type {Number}
  */
-export const ERINN_TIME_OFFSET = TIME_PER_ERINN_HOUR*8;
+export const ERINN_TIME_OFFSET = getTimezoneOffset(SERVER_TIMEZONE);
 
 /**
  * Erinn months where index 0 is for the server timezone's Sunday
@@ -612,3 +612,54 @@ export function camelCase(str){
         return letter.toUpperCase();
     });
 }
+
+/**
+ * For a given timezone, returns the UTC offset as a number in milliseconds
+ * @param {String} timeZone - Timezone to check. For example "America/Los_Angeles"
+ * @param {Number} atTimestamp - Unix timestamp as number of milliseconds. To account for a given timezone having a different offset at a past time due to daylight savings.
+ * @returns {Number} - UTC offset in milliseconds
+ */
+export function getTimezoneOffset(timeZone, atTimestamp) {
+    let date = new Date();
+    if(atTimestamp != null) date = new Date(atTimestamp);
+
+
+    // Format the date in the given timeZone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timeZone,
+        hour12: false,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3,
+    });
+
+    // Format the date in UTC
+    const utcFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'UTC',
+        hour12: false,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3,
+    });
+
+    const timezoneDateParts = formatter.formatToParts(date);
+    const utcDateParts = utcFormatter.formatToParts(date);
+
+    // Find the difference in milliseconds
+    let dateTimeStrTimezone = `${timezoneDateParts.find(p => p.type === 'year').value}-${timezoneDateParts.find(p => p.type === 'month').value}-${timezoneDateParts.find(p => p.type === 'day').value}T${timezoneDateParts.find(p => p.type === 'hour').value}:${timezoneDateParts.find(p => p.type === 'minute').value}:${timezoneDateParts.find(p => p.type === 'second').value}.${timezoneDateParts.find(p => p.type === 'fractionalSecond').value}`;
+    let dateTimeStrUTC = `${utcDateParts.find(p => p.type === 'year').value}-${utcDateParts.find(p => p.type === 'month').value}-${utcDateParts.find(p => p.type === 'day').value}T${utcDateParts.find(p => p.type === 'hour').value}:${utcDateParts.find(p => p.type === 'minute').value}:${utcDateParts.find(p => p.type === 'second').value}.${utcDateParts.find(p => p.type === 'fractionalSecond').value}`;
+    
+
+    // Calculate the time difference in minutes
+    const offsetInMinutes = new Date(dateTimeStrTimezone).getTime() - new Date(dateTimeStrUTC).getTime();
+
+    return offsetInMinutes;
+  }

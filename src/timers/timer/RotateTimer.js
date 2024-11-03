@@ -1,11 +1,11 @@
 import { Timer } from './Timer.js';
 import { TimerDisplay } from '../display/TimerDisplay.js'
 
-import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, // Variables
+import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, SERVER_TIMEZONE, // Variables
     argumentError, timerError, timerDisplayError, // Error logging
     parseListSettings, parseServerDateTime, validateTimeStrings, validateDurationTimeStrings, // Parsing and validation
     convertTimeStringToFullServerDurationTimeString, convertTimeStringToMillisecondsAfterMidnight, // Conversions
-    dateToMillisecondsAfterServerMidnight, arrayFindLast
+    dateToMillisecondsAfterServerMidnight, arrayFindLast, getTimezoneOffset
  } from '../helper/utils.js';
 
  /**
@@ -454,6 +454,8 @@ export class RotateTimer extends Timer{
         let currentTime = Date.now();
         let epochDate = this.epoch.dateObject;
         let epochTime = epochDate.getTime();
+        // Adjust epoch time for timezone difference due to daylight savings
+        epochTime += getTimezoneOffset(SERVER_TIMEZONE, epochTime) - getTimezoneOffset(SERVER_TIMEZONE, currentTime);
         // Time in milliseconds until the next rotation
         let waitTime = Infinity;
         // How many milliseconds into the Erinn day the current time is at
