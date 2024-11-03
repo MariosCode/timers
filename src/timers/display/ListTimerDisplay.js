@@ -231,8 +231,8 @@ export class ListTimerDisplay extends TimerDisplay{
      * Note: The display should be initialized with {@link ListTimerDisplay.initializeElements|initializeElements} before redrawing. redraw assumes the display's elements already exist.
      */
     #redraw(){
-        // Loop through all entries
-        for(let i = 0; i < this.depth; i++){
+        // Loop through all entries within startAtEntry and endAtEntry
+        for(let i = this.startAtEntry-1; i < this.endAtEntry; i++){
             // Update entry time
             if(this.dataElements[i*2]){
                 this.dataElements[i*2].text(TimerDisplay.formatTimeClock(this.timerData[i*2+1], this.timeFormat, this.is12hour, this.suffixam, this.suffixpm));
@@ -308,6 +308,9 @@ export class ListTimerDisplay extends TimerDisplay{
         for (let i = 0; i < this.depth; i++) {
             // The wrapper for the entry, with entryClass and entryStyle applied
             let $entry = $('<div></div>').addClass(this.entryClass).css(entryStyleObj);
+
+            // Apply startAtEntry and endAtEntry
+            if( i + 1 < this.startAtEntry || i + 1 > this.endAtEntry ) $entry.css({display:'none'});
         
             let $valuePart = null;
             let $timePart = null;

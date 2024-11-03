@@ -278,8 +278,8 @@ export class CountdownTimerDisplay extends TimerDisplay{
         // Determine when the next scheduled time should be, minimum 1ms from now
         this.nextUpdate = Math.max(currTime + precision - (currTime % precision) , currTime + 1);
 
-        // Loop through all entries
-        for(let i = 0; i < this.depth; i++){
+        // Loop through all entries within startAtEntry and endAtEntry
+        for(let i = this.startAtEntry-1; i < this.endAtEntry; i++){
             // Update entry time
             if(this.dataElements[i*2]){
                 this.dataElements[i*2].text(TimerDisplay.formatTimeDuration( Math.floor(Math.max(this.timerData[i*2+1] - TIME_PAGE_LOAD - timestamp, 0)), this.timeFormat, this.verbose, this.hideLeading0, this.hideAll0));
@@ -355,6 +355,9 @@ export class CountdownTimerDisplay extends TimerDisplay{
         for (let i = 0; i < this.depth; i++) {
             // The wrapper for the entry, with entryClass and entryStyle applied
             let $entry = $('<div></div>').addClass(this.entryClass).css(entryStyleObj);
+
+            // Apply startAtEntry and endAtEntry
+            if( i + 1 < this.startAtEntry || i + 1 > this.endAtEntry ) $entry.css({display:'none'});
         
             let $valuePart = null;
             let $timePart = null;

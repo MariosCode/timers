@@ -26,6 +26,10 @@ a:hover{
     display: none;
 }
 
+.timer-display{
+    display: inline;
+}
+
 .timer{
     display: none;
 }
