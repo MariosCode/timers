@@ -254,16 +254,33 @@ export function parseServerDateTime(input){
     }
 
     // The date has been fully validated. Now turn this date from the server's timezone into miliseconds.
-    // Create a string that can be used to make a Date object from the server's time zone
-    const dateTimeStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}.${String(millisecond).padStart(3, '0')}`;
+    // Create a string that can be used to make a Date object
+    let dateTimeStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}.${String(millisecond).padStart(3, '0')}`;
 
-    // Make a Date object from the server's time zone
-    const dateObject = new Date(new Intl.DateTimeFormat('en-US', {
-        timeZone: SERVER_TIMEZONE,
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3,
-        hour12: false
-    }).format(new Date(dateTimeStr)));
+    // Create the Date object in Local timezone. We will need to find the timezone difference between Local and Server timezones and adjust this.
+    let dateObject = new Date(dateTimeStr);
+
+    // Formatter for Server timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {  
+        timeZone: SERVER_TIMEZONE,  
+        year: 'numeric',  
+        month: '2-digit',  
+        day: '2-digit',  
+        hour: '2-digit',  
+        minute: '2-digit',  
+        second: '2-digit',  
+        fractionalSecondDigits: 3,
+        hour12: false,
+      });
+
+    // Convert from Local time to Server time and get the parts
+    const parts = formatter.formatToParts(dateObject);
+
+    // Rebuild the date string. We now have a date in Local time and that date in the Server's time.
+    let dateTimeStr2 = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}T${parts.find(p => p.type === 'hour').value}:${parts.find(p => p.type === 'minute').value}:${parts.find(p => p.type === 'second').value}.${parts.find(p => p.type === 'fractionalSecond').value}`;
+    
+    // Adjust the original date with the timezone difference
+    dateObject = new Date(dateObject.getTime() + (dateObject - new Date(dateTimeStr2)));
 
     // Milliseconds can now be gotten with dateObject.getTime();
     // Note that the numbers for year, month, day, etc. in the following returned object are taken from the input string. Use dateObject to get date and time for the user's timezone.
