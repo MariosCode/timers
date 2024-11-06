@@ -5,7 +5,9 @@ import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, SERVER_TIMEZONE, // Variables
     argumentError, timerError, timerDisplayError, // Error logging
     parseListSettings, parseServerDateTime, validateTimeStrings, validateDurationTimeStrings, // Parsing and validation
     convertTimeStringToFullServerDurationTimeString, convertTimeStringToMillisecondsAfterMidnight, // Conversions
-    dateToMillisecondsAfterServerMidnight, arrayFindLast, getTimezoneOffset
+    dateToMillisecondsAfterServerMidnight, arrayFindLast, getTimezoneOffset,
+    TIME_PER_ERINN_HOUR,
+    TIME_PER_ERINN_MINUTE
  } from '../helper/utils.js';
 
  /**
@@ -34,19 +36,19 @@ import { TIME_PER_ERINN_DAY, ERINN_TIME_OFFSET, SERVER_TIMEZONE, // Variables
  * The rotate timer will go through the given list in order.
  * 
  * Rotate type timers must have a ul and/or an ol element, with at least 1 li element. This is the list the timer will rotate through.
- * See {@link parseListSettings} for details on adding settings to individual list items. Valid list item settings are:
+ * See {@link parseListSettings} for details on adding settings to individual list entries. Valid list entry settings are:
  * 
- *  - link: assigns a link to a list item
+ *  - link: assigns a link to a list entry
  * 
  * The following settings are required in an element with the class "settings":
  * 
- *  - epoch: A time the rotation started at the first item in the provided list. For example: "2016-01-31T00:00:00.000S". Must be in Server time and include the date.
- *      >- For changeAt rotate timers, the epoch can be any time the rotation was at the first item in the list. For changeEvery rotate timers, the epoch should be the exact time the rotation was at the beginning of first item in the list.
+ *  - epoch: A time the rotation started at the first entry in the provided list. For example: "2016-01-31T00:00:00.000S". Must be in Server time and include the date.
+ *      >- For changeAt rotate timers, the epoch can be any time the rotation was at the first entry in the list. For changeEvery rotate timers, the epoch should be the exact time the rotation was at the beginning of first entry in the list.
  *  - id: A unique ID to give to this timer so displays can access it
  * 
  * And one of the following:
  * 
- *  - changeAt: A value or multiple values. Each value is the time to rotate the timer to the next item in the list. For example "{6:00E}{8:00E}{12:00E}", or "{6:00S}{8:00:00.000S}", or "6:00:00S". Can also be "sunshift".
+ *  - changeAt: A value or multiple values. Each value is the time to rotate the timer to the next entry in the list. For example "{6:00E}{8:00E}{12:00E}", or "{6:00S}{8:00:00.000S}", or "6:00:00S". Can also be "sunshift".
  *  - changeEvery: A single value for how often to rotate. For example "6:00S" or "6:00:00.000S" (every 6 real time hours), or "2:00E" (every 2 Erinn time hours).
  * 
  * Optionally in settings, a rotate timer may have the following:
@@ -65,7 +67,7 @@ export class RotateTimer extends Timer{
      * @param {Object} obj - Object containing all parameters
      * @param {Object.<String, String[]>} obj.args - The args object created from the element with the "settings" class
      * @param {String[]} obj.list - List created from all li elements in a ul or ol element
-     * @param {String[][]} obj.listLinks - Link setting from each list item
+     * @param {String[][]} obj.listLinks - Link setting from each list entry
      * @param {Epoch} obj.epoch - Object containing the parsed epoch Date from the epoch provided in args
      * @param {Boolean} obj.compress - Whether or not to apply the compress filter
      * @param {String[]} obj.changeAt - Parsed args.changeAt times
@@ -73,7 +75,7 @@ export class RotateTimer extends Timer{
      * @param {Number[]} obj.serverTimes - The Server times from args.changeAt sorted and stored as milliseconds after Server midnight
      * @param {Duration} obj.changeEveryDuration - Object containing the full Server time string and milliseconds for the duration given in args.changeEvery
      * @param {Number} obj.rotation - Number of rotations that have passed
-     * @param {Number[]} obj.rotationData - Rotation data to be given to attached displays. Numbers are in pairs: list item index, start time for this list item in milliseconds since unix epoch.
+     * @param {Number[]} obj.rotationData - Rotation data to be given to attached displays. Numbers are in pairs: list entry index, start time for this list entry in milliseconds since unix epoch.
      * @param {Number} obj.timeout - Timeout ID for the next execution of updateRotation so it can be canceled
      * @private  
      */  
@@ -108,13 +110,13 @@ export class RotateTimer extends Timer{
              * Updates the rotation and TimerDisplays for rotate timers then sets a timeout to call itself again at the next scheduled rotation time.
              */
             this.updateRotation = this.#updateRotationChangeEvery.bind(this);
-            this.rotationType = "changeEvery";
+            this.rotationType = 'changeEvery';
         }else{
             /**
              * Updates the rotation and TimerDisplays for rotate timers then sets a timeout to call itself again at the next scheduled rotation time.
              */
             this.updateRotation = this.#updateRotationChangeAt.bind(this);
-            this.rotationType = "changeAt";
+            this.rotationType = 'changeAt';
         }
 
         /**
@@ -181,8 +183,8 @@ export class RotateTimer extends Timer{
      */
     attachDisplay(display){
         // Validate the given TimerDisplay
-        if(!(display instanceof TimerDisplay)) return timerError("Failed to attach display due to the provided display not being an instance of TimerDisplay or its subclasses.");
-        if(this.timerDisplays.has(display)) return timerError("Failed to attach display due to the provided display already being attached.");
+        if(!(display instanceof TimerDisplay)) return timerError('Failed to attach display due to the provided display not being an instance of TimerDisplay or its subclasses.');
+        if(this.timerDisplays.has(display)) return timerError('Failed to attach display due to the provided display already being attached.');
 
         // Add to the timerDisplays Map
         this.timerDisplays.set(display, true);
@@ -211,7 +213,7 @@ export class RotateTimer extends Timer{
      */
     detachDisplay(display){
         // Validate the display is attached
-        if(!(this.timerDisplays.has(display))) return timerError("Failed to detach display due to the provided display not being attached.");
+        if(!(this.timerDisplays.has(display))) return timerError('Failed to detach display due to the provided display not being attached.');
 
         this.timerDisplays.delete(display);
 
@@ -274,38 +276,15 @@ export class RotateTimer extends Timer{
      * @private  
      */  
     static #validateParameters({args, list}){
-        // Basic validations
+        // List basic validations
         //================================================================================================================================================
-        // Validate epoch
-        if(!('epoch' in args)) return argumentError('Rotate type timers require an epoch.');
-        else if(args.epoch.length > 1) return argumentError('Rotate type timers require one epoch, not multiple.');
-        // A time the rotation started at index 0 (converted to ms) or false if the time provided could not be parsed
-        // For changeAt rotation timers, the epoch can be any Server time during which the rotation was at index 0.
-        let epoch = parseServerDateTime(args.epoch[0]);
-        if(!epoch) return argumentError('Rotate type timers requires a valid Server time epoch. Valid formats are yyyy-mm-ddThh:mm:ss.sssS or yyyy-mm-ddThh:mm:ssS or yyyy-mm-ddThh:mmS with the capital T and S being the literal letters. This should be in the server time zone.');
-
-        // Validate filters
-        let compress = false;
-        if('compress' in args){
-            if(args.compress.length > 1) return argumentError('Rotate type timers can only have 1 value for compress.');
-            if(args.compress[0].toLowerCase() !== 'true' && args.compress[0].toLowerCase() !== 'false') return argumentError('compress must be "true" or "false".');
-            if(args.compress[0].toLowerCase() === 'true') compress = true;
-        }
-
-        // Validate changeAt/changeEvery
-        if(!('changeAt' in args) && !('changeEvery' in args)) return argumentError('Rotate type timers require either changeAt or changeEvery.');
-        else if('changeAt' in args && 'changeEvery' in args) return argumentError('Rotate type timers cannot take both changeAt and changeEvery.');
-        else if('changeEvery' in args && args.changeEvery.length > 1) return argumentError('Rotate type timers can only have one changeEvery.');
-
-        // Assign changeEvery/changeAt time
-        let changeEvery = 'changeEvery' in args ? args.changeEvery.slice() : null;
-        let changeAt = 'changeAt' in args ? args.changeAt.slice() : null;
-
         // Validate list
-        if(list.length < 1) return argumentError('Rotate type timers must have at least 1 item in its list.');
-        // Separate and store value and settings from each list item
+        if(list.length < 1) return argumentError('Rotate type timers must have at least 1 entry in its list.');
+        // Separate and store value and settings from each list entry
         let listValues = [];
         let listLinks = [];
+        let listChangeAt = [];
+        let listEpoch = false; // If there's list changeAt times, the epoch is calculated from them and stored here
         list.forEach((value) => {
             let result = parseListSettings(value);
             listValues.push(result.value);
@@ -328,9 +307,189 @@ export class RotateTimer extends Timer{
                     }
                 });
             }
+            // Add changeAt
+            listChangeAt.push([]);
+            if(result.changeAt){
+                result.changeAt.forEach( value => {
+                    listChangeAt[listChangeAt.length-1].push(value);
+                });
+            }
         });
 
+        // List changeAt validation
+        //================================================================================================================================================
+        if(listChangeAt.some( innerArray => innerArray.length > 0)){
+            // If one list entry has a changeAt, they all must have one
+            if(!(listChangeAt.every( innerArray => innerArray.length > 0))) return argumentError('If one entry in a timer\'s list has a changeAt, they all must have one.');
+            // And there can not be a timer changeAt or changeEvery
+            if('changeAt' in args || 'changeEvery' in args) return argumentError('If a timer\'s list entries have a changeAt, the timer can not have a changeAt or changeEvery.');
+            let newListChangeAt = [];
+            let changeAtType = '';
+            let invalidTime = false;
+            // Replace any instance of sunshift to 06:00E and 18:00E and also make sure Erinn times and Server times are not both present.
+            listChangeAt.forEach(innerArray => {
+                if(!invalidTime){ // Skip everything if an invalid time was found
+                    newListChangeAt.push([]);
+                    innerArray.forEach( value => {
+                        if(!invalidTime){ // Skip everything if an invalid time was found
+                            // Swap sunshift in changeAt with 06:00E and 18:00E
+                            if (value.toLowerCase() === 'sunshift'){
+                                newListChangeAt[newListChangeAt.length-1].push('06:00E','18:00E');
+                                // Make sure there isn't a Server changeAt time present
+                                if(!changeAtType) changeAtType = 'E';
+                                else if(changeAtType === 'S'){
+                                    invalidTime = true;
+                                    argumentError('If a timer\'s list entries have a changeAt, they must all be the same type of time (all ending in E for Erinn time or S for Server time).');
+                                }
+                            // If not sunshift, keep this string as it is
+                            }else{
+                                // Make sure the type is either S or E
+                                if(value[value.length-1].toUpperCase() !== 'S' && value[value.length-1].toUpperCase() !== 'E'){
+                                    invalidTime = true;
+                                    argumentError('Timer list entry\'s changeAt must end in E for Erinn time or S for Server time.');
+                                // Make sure the time is valid
+                                } else if(!validateTimeStrings([value])){
+                                    invalidTime = true;
+                                    argumentError('Timer list entry\'s changeAt must be a valid time. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. The numbers can be 1 or 2 digits (or 3 for milliseconds). Time given: ',value);
+                                // Make sure the changeAt values aren't mixing Server and Erinn times
+                                }else{
+                                    if(!changeAtType || changeAtType === value[value.length-1].toUpperCase()){
+                                        // No changeAtType, set it to E or S
+                                        if(!changeAtType) changeAtType = value[value.length-1].toUpperCase();
+                                        let newValue = value;
+                                        // Turn this time into a full time string if it is a Server time
+                                        if(changeAtType === 'S'){
+                                            // Remove the 'S'
+                                            newValue = newValue.slice(0,-1);
+                                            // Pad the milliseconds
+                                            newValue = newValue.split('.');
+                                            if(newValue.length > 1) newValue[1].padStart(3,'0');
+                                            else newValue.push('.000');
+                                            // Pad the remaining times
+                                            newValue[0] = newValue[0].split(':');
+                                            newValue[0] = newValue[0].map(val => val.padStart(2,'0'));
+                                            while(newValue[0].length < 3){
+                                                newValue[0].push('00');
+                                            }
+                                            // Bring the new time string together
+                                            // Join mlliseconds with seconds
+                                            newValue[0][newValue[0].length-1] = `${newValue[0][newValue[0].length-1]}.${newValue[1]}`;
+                                            // Join everything
+                                            newValue = `${newValue[0].join(':')}S`;
+                                        }
+                                        // Turn this time into a full time string if it is an Erinn time
+                                        if(changeAtType === 'E'){
+                                            newValue = newValue.slice(0,-1);
+                                            newValue = newValue.split(':');
+                                            newValue = `${newValue[0].padStart(2,'0')}:${newValue[1].padStart(2,'0')}E`;
+                                        }
+                                        // Add the time string
+                                        newListChangeAt[newListChangeAt.length-1].push(newValue);
+                                    }else{
+                                        invalidTime = true;
+                                        argumentError('If a timer\'s list entries have a changeAt, they must all be the same type of time (all ending in E for Erinn time or S for Server time).');
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+
+            // If an invalid time was found, an error message was already given. Just return null.
+            if(invalidTime) return null;
+
+            // All times were validated and are now in full time string format in newListChangeAt.
+            // Every list entry needs one changeAt time, so list entries with multiple will be duplicated now with one time for each duplicate.
+            let splitChangeAt = [];
+            let splitListValues = [];
+            let splitListLinks = [];
+            listValues.forEach( (value, index) => {
+                // Split multiple changeAt times into multiple list entries instead
+                if(newListChangeAt[index].length > 1){
+                    newListChangeAt[index].forEach( changeAtValue => {
+                        splitChangeAt.push(changeAtValue);
+                        splitListValues.push(value);
+                        splitListLinks.push(listLinks[index].slice());
+                    });
+                // Single changeAt time
+                }else{
+                    splitChangeAt.push(newListChangeAt[index][0]);
+                    splitListValues.push(value);
+                    splitListLinks.push(listLinks[index].slice());
+                }
+            });
+
+            // Now sort the list by the changeAt times.
+            // Combine the arrays
+            let combined = splitChangeAt.map((changeAt, index) => {
+                return { changeAt, value: splitListValues[index], links: splitListLinks[index] };
+            });
+
+            // Sort them
+            combined.sort((a, b) => {
+                // Convert times to Date objects for comparison
+                let type = a.changeAt[a.changeAt.length - 1];
+                let timeA = new Date(`1970-01-01T${(type === 'S' ? a.changeAt.slice(0,-1) : a.changeAt.slice(0,-1) + ':00.000')}Z`);
+                let timeB = new Date(`1970-01-01T${(type === 'S' ? b.changeAt.slice(0,-1) : b.changeAt.slice(0,-1) + ':00.000')}Z`);
+                return timeA - timeB;
+            });
+
+            // Unzip the arrays into the original variables
+            listValues = [];
+            listLinks = [];
+            listChangeAt = [];
+            combined.forEach(obj => {
+                listValues.push(obj.value);
+                listChangeAt.push(obj.changeAt);
+                listLinks.push(obj.links.slice());
+            });
+
+            // Calculate an epoch from the first time and store in listEpoch
+            if(listChangeAt[0][listChangeAt[0].length - 1] === 'S'){
+                // Server time. Just set the epoch to any date with that time. The timer adjusts the epoch automatically for daylight savings changes.
+                listEpoch = `2024-11-01T${listChangeAt[0]}`;
+            }else{
+                // Erinn time. Use Erinn time epoch 2024-11-01T03:00:00.000S and just add the real time minutes, seconds, and milliseconds.
+                let erinnMilliseconds = listChangeAt[0].slice(0 , -1).split(":");
+                erinnMilliseconds = (Number(erinnMilliseconds[0]) * TIME_PER_ERINN_HOUR) + (Number(erinnMilliseconds[1]) * TIME_PER_ERINN_MINUTE);
+                listEpoch = `2024-11-01T03:${String(Math.floor(erinnMilliseconds/60000)).padStart(2,'0')}:${String(Math.floor((erinnMilliseconds%60000)/1000)).padStart(2,'0')}.${String(erinnMilliseconds%1000).padStart(3,'0')}S`;
+            }
+        }else{
+            //no changeAt settings in the list, set it to false
+            listChangeAt = false;
+        }
+
+        // args basic validations
+        //================================================================================================================================================
+        // Validate epoch
+        if(!('epoch' in args) && !listEpoch) return argumentError('Rotate type timers require an epoch.');
+        else if(!listEpoch && args.epoch.length > 1) return argumentError('Rotate type timers require one epoch, not multiple.');
+        else if('epoch' in args && listEpoch) argumentError('If the list in a timer use changeAt settings, the epoch is calculated automatically. The supplied epoch setting will be ignored.');
+        // A time the rotation started at index 0 (converted to ms) or false if the time provided could not be parsed
+        // For changeAt rotation timers, the epoch can be any Server time during which the rotation was at index 0.
+        let epoch = listEpoch ? parseServerDateTime(listEpoch) : parseServerDateTime(args.epoch[0]);
+        if(!epoch) return argumentError('Rotate type timers requires a valid Server time epoch. Valid formats are yyyy-mm-ddThh:mm:ss.sssS or yyyy-mm-ddThh:mm:ssS or yyyy-mm-ddThh:mmS with the capital T and S being the literal letters. This should be in the server time zone.');
+
+        // Validate filters
+        let compress = false;
+        if('compress' in args){
+            if(args.compress.length > 1) return argumentError('Rotate type timers can only have 1 value for compress.');
+            if(args.compress[0].toLowerCase() !== 'true' && args.compress[0].toLowerCase() !== 'false') return argumentError('compress must be "true" or "false".');
+            if(args.compress[0].toLowerCase() === 'true') compress = true;
+        }
+
+        // Validate changeAt/changeEvery
+        if(!('changeAt' in args || listChangeAt) && !('changeEvery' in args)) return argumentError('Rotate type timers require either changeAt or changeEvery.');
+        else if(('changeAt' in args || listChangeAt) && 'changeEvery' in args) return argumentError('Rotate type timers cannot take both changeAt and changeEvery.');
+        else if('changeEvery' in args && args.changeEvery.length > 1) return argumentError('Rotate type timers can only have one changeEvery.');
+        // Making sure the timer does not have both a 'changeAt' in args and a listChangeAt is done above during list validation.
         
+        // Assign changeEvery/changeAt time
+        let changeEvery = 'changeEvery' in args ? args.changeEvery.slice() : null;
+        let changeAt = 'changeAt' in args ? args.changeAt.slice() : 
+                        (listChangeAt ? listChangeAt.slice() : null);
+
         // changeAt validation
         //================================================================================================================================================
         let updatedChangeAt = [];
@@ -339,12 +498,12 @@ export class RotateTimer extends Timer{
         if(changeAt){
             changeAt.forEach(str => {
                 // Swap sunshift in changeAt with 06:00E and 18:00E
-                if (str.toLowerCase() === "sunshift") updatedChangeAt.push('06:00E','18:00E');
+                if (str.toLowerCase() === 'sunshift') updatedChangeAt.push('06:00E','18:00E');
                 // If not sunshift, keep this string as it is
                 else updatedChangeAt.push(str);
             });
 
-            if(!validateTimeStrings(updatedChangeAt)) return argumentError('In a rotate type timer, changeAt has an invalid time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. The numbers can be 1 or 2 digits (or 3 for milliseconds) but must be a valid time.');
+            if(!validateTimeStrings(updatedChangeAt)) return argumentError('In a rotate type timer, changeAt has an invalid time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. The numbers can be 1 or 2 digits (or 3 for milliseconds) but must be a valid time. Time given: ',updatedChangeAt);
 
             // Separate and sort changeAt
             let errorValue = false;
@@ -356,7 +515,7 @@ export class RotateTimer extends Timer{
                 if(!convertedTimeString){
                     errorValue = str;
                 }else{
-                    convertedTimeString.type === "Erinn" ? erinnTimes.push(convertedTimeString.milliseconds) : serverTimes.push(convertedTimeString.milliseconds);
+                    convertedTimeString.type === 'Erinn' ? erinnTimes.push(convertedTimeString.milliseconds) : serverTimes.push(convertedTimeString.milliseconds);
                 }
             });
             if(errorValue !== false){ // Specifically a boolean check, not a falsy check.
