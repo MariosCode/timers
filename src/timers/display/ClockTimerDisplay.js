@@ -28,7 +28,7 @@ export class ClockTimerDisplay extends TimerDisplay{
 
         // Validate and convert the args into the values used by this class.
         let validatedParameters = ClockTimerDisplay.#validateParameters(args);
-        if(!validatedParameters) return null;
+        if(!validatedParameters) return undefined;
 
         /**
          * The HTML element for this display

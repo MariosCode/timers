@@ -21,7 +21,7 @@ export class ConsoleTimerDisplay extends TimerDisplay{
 
         // Validate and convert the args into the values used by this class.
         let validatedParameters = ConsoleTimerDisplay.#validateParameters(args);
-        if(!validatedParameters) return null;
+        if(!validatedParameters) return undefined;
 
         /**
          * The ID on the HTML element containing the Timer this display will attach to

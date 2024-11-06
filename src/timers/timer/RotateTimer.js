@@ -80,7 +80,10 @@ export class RotateTimer extends Timer{
      * @private  
      */  
     constructor({args, list, listLinks, epoch, compress, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout}){
-        if(!RotateTimer._allowConstructor) return timerError(`Rotate timers must be instantiated with RotateTimer.createInstance() instead of new RotateTimer()`);
+        if(!RotateTimer._allowConstructor){
+            timerError(`Rotate timers must be instantiated with RotateTimer.createInstance() instead of new RotateTimer()`);
+            return undefined;
+        }
         RotateTimer._allowConstructor = false;
 
         super();
