@@ -14,10 +14,10 @@ import { TimerDisplay } from './TimerDisplay.js'
  *      >- suffix: Used with 12hour. Expects two values. The first value will be placed after the time during the first 12 hours of the day, the second value after. Example: { am}{ pm}
  *  - weekday: true or false. Causes this clock timer to output the current weekday as its time instead of the time of day. For Erinn clocks, this would show the current month. Default: false
  *  - entryFormat: How to format the single entry of this display. %t for the time. For example: {The current time is %t.} Default: {%t}
- *  - entryStyle: Adds the given style to the outer div containing the time and additional text from entryFormat.
- *  - timeStyle: Adds the given style to the div containing the time.
- *  - entryClass: Adds the given CSS class name to the outer div containing the time and additional text from entryFormat.
- *  - timeClass: Adds the given CSS class name to the div containing the time.
+ *  - entryStyle: Adds the given style to the outer span containing the time and additional text from entryFormat.
+ *  - timeStyle: Adds the given style to the span containing the time.
+ *  - entryClass: Adds the given CSS class name to the outer span containing the time and additional text from entryFormat.
+ *  - timeClass: Adds the given CSS class name to the span containing the time.
  * 
  * @param {HTMLElement} element - The HTML element for this display
  * @param {Object} args - The args object created from the element with the "settings" class
@@ -74,22 +74,22 @@ export class ClockTimerDisplay extends TimerDisplay{
         this.entryFormat = validatedParameters.entryFormat;
 
         /**
-         * The style for the outer div for an entry
+         * The style for the outer span for an entry
          * @type {String}
          */
         this.entryStyle = validatedParameters.entryStyle;
         /**
-         * The style for the div containing the time
+         * The style for the span containing the time
          * @type {String}
          */
         this.timeStyle = validatedParameters.timeStyle;
         /**
-         * The class name for the outer div for an entry
+         * The class name for the outer span for an entry
          * @type {String}
          */
         this.entryClass = validatedParameters.entryClass;
         /**
-         * The class name for the div containing the time
+         * The class name for the span containing the time
          * @type {String}
          */
         this.timeClass = validatedParameters.timeClass;
@@ -173,7 +173,7 @@ export class ClockTimerDisplay extends TimerDisplay{
         let templateParts = this.entryFormat.split(/(%t)/);
 
         // The wrapper for the entry, with entryClass and entryStyle applied
-        let $entry = $('<div></div>').addClass(this.entryClass).css(entryStyleObj);
+        let $entry = $('<span></span>').addClass(this.entryClass).css(entryStyleObj);
     
         let $timePart = null;
     
@@ -181,7 +181,7 @@ export class ClockTimerDisplay extends TimerDisplay{
         templateParts.forEach(part => {
             // Entry time
             if (part === '%t') {
-                $timePart = $('<div></div>').addClass(this.timeClass).css(timeStyleObj);
+                $timePart = $('<span></span>').addClass(this.timeClass).css(timeStyleObj);
                 $entry.append($timePart);
             // Treat other parts as plain text
             } else {
@@ -189,7 +189,7 @@ export class ClockTimerDisplay extends TimerDisplay{
             }
         });
     
-        // Add the entry's time div to this.dataElement so it can be updated
+        // Add the entry's time span to this.dataElement so it can be updated
         this.dataElement = $timePart;
         // Add the entry to the container to later append to the HTML
         $elements = $elements.add($entry);

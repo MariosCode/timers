@@ -17,12 +17,12 @@ import { timerDisplayCreationError, timerDisplayError, camelCase } from "../help
  *  - 12hour: true or false. If true, time is displayed in 12 hour format. Default: false
  *      >- suffix: Used with 12hour. Expects two values. The first value will be placed after the time during the first 12 hours of the day, the second value after. Example: { am}{ pm}
  *  - entryFormat: How to format each entry of the display. %v for entry's value and %t for entry's time. %l#_ and %l to wrap text in that number link from this list item. For example: {The next %l1_event%l is %l2_%v%l at %t.} Default: {%t %v}
- *  - entryStyle: Adds the given style to each outer div containing the entry's value, time, and additional text from entryFormat.
- *  - valueStyle: Adds the given style to each div containing the entry's value.
- *  - timeStyle: Adds the given style to each div containing the entry's time.
- *  - entryClass: Adds the given CSS class name to each outer div containing the entry's value, time, and additional text from entryFormat.
- *  - valueClass: Adds the given CSS class name to each div containing the entry's value.
- *  - timeClass: Adds the given CSS class name to each div containing the entry's time.
+ *  - entryStyle: Adds the given style to each outer span containing the entry's value, time, and additional text from entryFormat.
+ *  - valueStyle: Adds the given style to each span containing the entry's value.
+ *  - timeStyle: Adds the given style to each span containing the entry's time.
+ *  - entryClass: Adds the given CSS class name to each outer span containing the entry's value, time, and additional text from entryFormat.
+ *  - valueClass: Adds the given CSS class name to each span containing the entry's value.
+ *  - timeClass: Adds the given CSS class name to each span containing the entry's time.
  *  - startAtEntry: Displays entries starting at this entry number. Useful when stringing multiple displays together for more control over styling. Default: 1
  *  - endAtEntry: Displays entries ending at this entry number. Useful when stringing multiple displays together for more control over styling. Default: Equal to the depth
  * 
@@ -95,32 +95,32 @@ export class ListTimerDisplay extends TimerDisplay{
         this.entryFormat = validatedParameters.entryFormat;
 
         /**
-         * The style for the outer div for an entry
+         * The style for the outer span for an entry
          * @type {String}
          */
         this.entryStyle = validatedParameters.entryStyle;
         /**
-         * The style for the div containing the entry's value
+         * The style for the span containing the entry's value
          * @type {String}
          */
         this.valueStyle = validatedParameters.valueStyle;
         /**
-         * The style for the div containing the entry's time
+         * The style for the span containing the entry's time
          * @type {String}
          */
         this.timeStyle = validatedParameters.timeStyle;
         /**
-         * The class name for the outer div for an entry
+         * The class name for the outer span for an entry
          * @type {String}
          */
         this.entryClass = validatedParameters.entryClass;
         /**
-         * The class name for the div containing the entry's value
+         * The class name for the span containing the entry's value
          * @type {String}
          */
         this.valueClass = validatedParameters.valueClass;
         /**
-         * The class name for the div containing the entry's time
+         * The class name for the span containing the entry's time
          * @type {String}
          */
         this.timeClass = validatedParameters.timeClass;
@@ -307,7 +307,7 @@ export class ListTimerDisplay extends TimerDisplay{
         // Loop through every entry
         for (let i = 0; i < this.depth; i++) {
             // The wrapper for the entry, with entryClass and entryStyle applied
-            let $entry = $('<div></div>').addClass(this.entryClass).css(entryStyleObj);
+            let $entry = $('<span></span>').addClass(this.entryClass).css(entryStyleObj);
 
             // Apply startAtEntry and endAtEntry
             if( i + 1 < this.startAtEntry || i + 1 > this.endAtEntry ) $entry.css({display:'none'});
@@ -331,11 +331,11 @@ export class ListTimerDisplay extends TimerDisplay{
                     $currentLink = null;
                 // Entry time
                 } else if (part === '%t') {
-                    $timePart = $('<div></div>').addClass(this.timeClass).css(timeStyleObj);
+                    $timePart = $('<span></span>').addClass(this.timeClass).css(timeStyleObj);
                     $currentLink != null ? $currentLink.append($timePart) : $entry.append($timePart);
                 // Entry value
                 } else if (part === '%v') {
-                    $valuePart = $('<div></div>').addClass(this.valueClass).css(valueStyleObj);
+                    $valuePart = $('<span></span>').addClass(this.valueClass).css(valueStyleObj);
                     $currentLink != null ? $currentLink.append($valuePart) : $entry.append($valuePart);
                 // Treat other parts as plain text
                 } else {
@@ -343,7 +343,7 @@ export class ListTimerDisplay extends TimerDisplay{
                 }
             });
         
-            // Add the entry's time and value divs to this.dataElements so they can be updated
+            // Add the entry's time and value spans to this.dataElements so they can be updated
             this.dataElements.push($timePart , $valuePart);
             // Add the entry to the container to later append to the HTML
             $elements = $elements.add($entry);
