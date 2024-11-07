@@ -293,10 +293,10 @@ export class ClockTimerDisplay extends TimerDisplay{
         // Validate weekday
         returnObject.weekday = false;
         if('weekday' in args){
-            if(args.weekday.length > 1) return timerDisplayCreationError('weekday can not have more than 1 value.');
+            if(args.weekday.length > 1) return timerDisplayCreationError('Failed to create timer display. Weekday can not have more than 1 value. Arguments:', arguments);
             if(args.weekday[0].toLowerCase() === 'false') returnObject.weekday = false;
             else if(args.weekday[0].toLowerCase() === 'true') returnObject.weekday = true;
-            else return timerDisplayCreationError('weekday must be true or false.');
+            else return timerDisplayCreationError('Failed to create timer display. weekday must be true or false. Arguments:', arguments);
         }
         
         return returnObject;

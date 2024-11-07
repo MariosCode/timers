@@ -204,7 +204,7 @@ export class ListTimerDisplay extends TimerDisplay{
      */
     updateDisplay(newTimerData, forceRedraw){
         // Cancel if updating display with this data is impossible
-        if(newTimerData.length/2 < this.depth) return timerDisplayError(`List type timer display failed an update due to invalid timerData length. Length expected: ${this.depth*2} timerData:`, newTimerData); 
+        if(newTimerData.length/2 < this.depth) return timerDisplayError(`List type timer display failed an update due to invalid timerData length. Length expected: ${this.depth*2} timerData:`, newTimerData, ' Timer display:', this.element); 
         // Check if this timer needs to redraw its contents unless forceRedraw is true or the display has no timer data stored
         if(!forceRedraw && this.timerData.length > 0){
             // Check if the currently selected entry has not changed

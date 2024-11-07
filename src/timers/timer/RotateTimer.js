@@ -80,14 +80,15 @@ export class RotateTimer extends Timer{
      * @private  
      */  
     constructor({args, list, listLinks, epoch, compress, changeAt, erinnTimes, serverTimes, changeEveryDuration, rotation, rotationData, timeout}){
+
+        super();
+
         if(!RotateTimer._allowConstructor){
-            timerError(`Rotate timers must be instantiated with RotateTimer.createInstance() instead of new RotateTimer()`);
+            timerError(`Failed to create timer. Rotate timers must be instantiated with RotateTimer.createInstance() instead of new RotateTimer(). Arguments:`, arguments);
             return undefined;
         }
         RotateTimer._allowConstructor = false;
 
-        super();
-        
         // Original parameters
         this.args = args;
         this.list = list;
@@ -186,8 +187,8 @@ export class RotateTimer extends Timer{
      */
     attachDisplay(display){
         // Validate the given TimerDisplay
-        if(!(display instanceof TimerDisplay)) return timerError('Failed to attach display due to the provided display not being an instance of TimerDisplay or its subclasses.');
-        if(this.timerDisplays.has(display)) return timerError('Failed to attach display due to the provided display already being attached.');
+        if(!(display instanceof TimerDisplay)) return timerError('Failed to attach display due to the provided display not being an instance of TimerDisplay or its subclasses. Display:', display, ' Timer id:', this.args.id);
+        if(this.timerDisplays.has(display)) return timerError('Failed to attach display due to the provided display already being attached. Display:', display, ' Timer id:', this.args.id);
 
         // Add to the timerDisplays Map
         this.timerDisplays.set(display, true);
@@ -216,7 +217,7 @@ export class RotateTimer extends Timer{
      */
     detachDisplay(display){
         // Validate the display is attached
-        if(!(this.timerDisplays.has(display))) return timerError('Failed to detach display due to the provided display not being attached.');
+        if(!(this.timerDisplays.has(display))) return timerError('Failed to detach display due to the provided display not being attached. Display:', display, ' Timer id:', this.args.id);
 
         this.timerDisplays.delete(display);
 
@@ -282,7 +283,7 @@ export class RotateTimer extends Timer{
         // List basic validations
         //================================================================================================================================================
         // Validate list
-        if(list.length < 1) return argumentError('Rotate type timers must have at least 1 entry in its list.');
+        if(list.length < 1) return argumentError('Failed to create timer. Rotate type timers must have at least 1 entry in their list. Timer id:', args.id);
         // Separate and store value and settings from each list entry
         let listValues = [];
         let listLinks = [];
@@ -301,11 +302,11 @@ export class RotateTimer extends Timer{
                         if(['http:', 'https:'].includes(testUrl.protocol)){
                             listLinks[listLinks.length-1].push(value);
                         }else{
-                            argumentError(`In a Rotate type timer\'s list, a provided link does not use a valid protocol. Removing link. Valid protocols are http and https. Link: ${value}`);
+                            argumentError(`In a Rotate type timer\'s list, a provided link does not use a valid protocol. Removing link. Valid protocols are http and https. Link: "${value}" Timer id:`, args.id);
                             listLinks[listLinks.length-1].push('#');
                         }
                     } catch (e) {
-                        argumentError(`In a Rotate type timer\'s list, a provided link is not valid. Removing link. Link: ${value}`);
+                        argumentError(`In a Rotate type timer\'s list, a provided link is not valid. Removing link. Link: "${value}" Timer id:`, args.id);
                         listLinks[listLinks.length-1].push('#');
                     }
                 });
@@ -323,9 +324,9 @@ export class RotateTimer extends Timer{
         //================================================================================================================================================
         if(listChangeAt.some( innerArray => innerArray.length > 0)){
             // If one list entry has a changeAt, they all must have one
-            if(!(listChangeAt.every( innerArray => innerArray.length > 0))) return argumentError('If one entry in a timer\'s list has a changeAt, they all must have one.');
+            if(!(listChangeAt.every( innerArray => innerArray.length > 0))) return argumentError('Failed to create timer. If one entry in a timer\'s list has a changeAt, they all must have one. Timer id:', args.id);
             // And there can not be a timer changeAt or changeEvery
-            if('changeAt' in args || 'changeEvery' in args) return argumentError('If a timer\'s list entries have a changeAt, the timer can not have a changeAt or changeEvery.');
+            if('changeAt' in args || 'changeEvery' in args) return argumentError('Failed to create timer. If a timer\'s list entries have a changeAt, the timer can not have a changeAt or changeEvery. Timer id:', args.id);
             let newListChangeAt = [];
             let changeAtType = '';
             let invalidTime = false;
@@ -342,18 +343,18 @@ export class RotateTimer extends Timer{
                                 if(!changeAtType) changeAtType = 'E';
                                 else if(changeAtType === 'S'){
                                     invalidTime = true;
-                                    argumentError('If a timer\'s list entries have a changeAt, they must all be the same type of time (all ending in E for Erinn time or S for Server time).');
+                                    argumentError('Failed to create timer. If a timer\'s list entries have a changeAt, they must all be the same type of time (all ending in E for Erinn time or S for Server time). Timer id:', args.id);
                                 }
                             // If not sunshift, keep this string as it is
                             }else{
                                 // Make sure the type is either S or E
                                 if(value[value.length-1].toUpperCase() !== 'S' && value[value.length-1].toUpperCase() !== 'E'){
                                     invalidTime = true;
-                                    argumentError('Timer list entry\'s changeAt must end in E for Erinn time or S for Server time.');
+                                    argumentError('Failed to create timer. Timer list entry\'s changeAt must end in E for Erinn time or S for Server time. Timer id:', args.id);
                                 // Make sure the time is valid
                                 } else if(!validateTimeStrings([value])){
                                     invalidTime = true;
-                                    argumentError('Timer list entry\'s changeAt must be a valid time. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. The numbers can be 1 or 2 digits (or 3 for milliseconds). Time given: ',value);
+                                    argumentError('Failed to create timer. Timer list entry\'s changeAt must be a valid time. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. The numbers can be 1 or 2 digits (or 3 for milliseconds). Time given: ', value, ' Timer id:', args.id);
                                 // Make sure the changeAt values aren't mixing Server and Erinn times
                                 }else{
                                     if(!changeAtType || changeAtType === value[value.length-1].toUpperCase()){
@@ -390,7 +391,7 @@ export class RotateTimer extends Timer{
                                         newListChangeAt[newListChangeAt.length-1].push(newValue);
                                     }else{
                                         invalidTime = true;
-                                        argumentError('If a timer\'s list entries have a changeAt, they must all be the same type of time (all ending in E for Erinn time or S for Server time).');
+                                        argumentError('Failed to create timer. If a timer\'s list entries have a changeAt, they must all be the same type of time (all ending in E for Erinn time or S for Server time). Timer id:', args.id);
                                     }
                                 }
                             }
@@ -466,26 +467,26 @@ export class RotateTimer extends Timer{
         // args basic validations
         //================================================================================================================================================
         // Validate epoch
-        if(!('epoch' in args) && !listEpoch) return argumentError('Rotate type timers require an epoch.');
-        else if(!listEpoch && args.epoch.length > 1) return argumentError('Rotate type timers require one epoch, not multiple.');
-        else if('epoch' in args && listEpoch) argumentError('If the list in a timer use changeAt settings, the epoch is calculated automatically. The supplied epoch setting will be ignored.');
+        if(!('epoch' in args) && !listEpoch) return argumentError('Failed to create timer. Rotate type timers require an epoch. Timer id:', args.id);
+        else if(!listEpoch && args.epoch.length > 1) return argumentError('Failed to create timer. Rotate type timers require one epoch, not multiple. Timer id:', args.id);
+        else if('epoch' in args && listEpoch) argumentError('If the list in a timer use changeAt settings, the epoch is calculated automatically. The supplied epoch setting will be ignored. Timer id:', args.id);
         // A time the rotation started at index 0 (converted to ms) or false if the time provided could not be parsed
         // For changeAt rotation timers, the epoch can be any Server time during which the rotation was at index 0.
         let epoch = listEpoch ? parseServerDateTime(listEpoch) : parseServerDateTime(args.epoch[0]);
-        if(!epoch) return argumentError('Rotate type timers requires a valid Server time epoch. Valid formats are yyyy-mm-ddThh:mm:ss.sssS or yyyy-mm-ddThh:mm:ssS or yyyy-mm-ddThh:mmS with the capital T and S being the literal letters. This should be in the server time zone.');
+        if(!epoch) return argumentError('Failed to create timer. Rotate type timers requires a valid Server time epoch. Valid formats are yyyy-mm-ddThh:mm:ss.sssS or yyyy-mm-ddThh:mm:ssS or yyyy-mm-ddThh:mmS with the capital T and S being the literal letters. This should be in the server time zone. Timer id:', args.id);
 
         // Validate filters
         let compress = false;
         if('compress' in args){
-            if(args.compress.length > 1) return argumentError('Rotate type timers can only have 1 value for compress.');
-            if(args.compress[0].toLowerCase() !== 'true' && args.compress[0].toLowerCase() !== 'false') return argumentError('compress must be "true" or "false".');
+            if(args.compress.length > 1) return argumentError('Failed to create timer. Rotate type timers can only have 1 value for compress. Timer id:', args.id);
+            if(args.compress[0].toLowerCase() !== 'true' && args.compress[0].toLowerCase() !== 'false') return argumentError('Failed to create timer. compress must be "true" or "false". Timer id:', args.id);
             if(args.compress[0].toLowerCase() === 'true') compress = true;
         }
 
         // Validate changeAt/changeEvery
-        if(!('changeAt' in args || listChangeAt) && !('changeEvery' in args)) return argumentError('Rotate type timers require either changeAt or changeEvery.');
-        else if(('changeAt' in args || listChangeAt) && 'changeEvery' in args) return argumentError('Rotate type timers cannot take both changeAt and changeEvery.');
-        else if('changeEvery' in args && args.changeEvery.length > 1) return argumentError('Rotate type timers can only have one changeEvery.');
+        if(!('changeAt' in args || listChangeAt) && !('changeEvery' in args)) return argumentError('Failed to create timer. Rotate type timers require either changeAt or changeEvery. Timer id:', args.id);
+        else if(('changeAt' in args || listChangeAt) && 'changeEvery' in args) return argumentError('Failed to create timer. Rotate type timers cannot take both changeAt and changeEvery. Timer id:', args.id);
+        else if('changeEvery' in args && args.changeEvery.length > 1) return argumentError('Failed to create timer. Rotate type timers can only have one changeEvery. Timer id:', args.id);
         // Making sure the timer does not have both a 'changeAt' in args and a listChangeAt is done above during list validation.
         
         // Assign changeEvery/changeAt time
@@ -506,7 +507,7 @@ export class RotateTimer extends Timer{
                 else updatedChangeAt.push(str);
             });
 
-            if(!validateTimeStrings(updatedChangeAt)) return argumentError('In a rotate type timer, changeAt has an invalid time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. The numbers can be 1 or 2 digits (or 3 for milliseconds) but must be a valid time. Time given: ',updatedChangeAt);
+            if(!validateTimeStrings(updatedChangeAt)) return argumentError('Failed to create timer. In a rotate type timer, changeAt has an invalid time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. The numbers can be 1 or 2 digits (or 3 for milliseconds) but must be a valid time. Time given: ', updatedChangeAt, ' Timer id:', args.id);
 
             // Separate and sort changeAt
             let errorValue = false;
@@ -522,7 +523,7 @@ export class RotateTimer extends Timer{
                 }
             });
             if(errorValue !== false){ // Specifically a boolean check, not a falsy check.
-                return timerError(`Rotate timer failed to complete convertTimeStringToMillisecondsAfterMidnight at a changeAt value of ${errorValue}`);
+                return timerError(`Failed to create timer. Rotate timer failed to complete convertTimeStringToMillisecondsAfterMidnight at a changeAt value of ${errorValue}. Timer id:`, args.id);
             }
             // Sort the arrays from earliest time to latest
             erinnTimes.sort((a,b) => a - b);
@@ -533,11 +534,11 @@ export class RotateTimer extends Timer{
         //================================================================================================================================================
         let changeEveryDuration = null;
         if(changeEvery){
-            if(!validateDurationTimeStrings(changeEvery)) return argumentError('In a rotate type timer, changeEvery is an invalid duration time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. For durations, the numbers accept any number of digits.');
+            if(!validateDurationTimeStrings(changeEvery)) return argumentError('Failed to create timer. In a rotate type timer, changeEvery is an invalid duration time string. Valid formats are hh:mm:ss.sssS, hh:mm:ssS, hh:mmS, hh:mmE with the capital S and E being the literal letters. S means server time, E means Erinn time. For durations, the numbers accept any number of digits. Timer id:', args.id);
             // Convert to real time duration as a full Server time string like 05:00:00.000S and the number of real milliseconds.
             changeEveryDuration = convertTimeStringToFullServerDurationTimeString(changeEvery[0]);
-            if(!changeEveryDuration) return timerError(`Rotate timer failed to complete convertTimeStringToFullServerDurationTimeString. changeEvery value: ${changeEvery[0]}`);
-            if(changeEveryDuration.milliseconds < 1) return argumentError(`Rotate timers with a changeEvery can not have a duration of 0ms or below. changeEvery value: ${changeEvery[0]}`);
+            if(!changeEveryDuration) return timerError(`Failed to create timer. Rotate timer failed to complete convertTimeStringToFullServerDurationTimeString. changeEvery value: ${changeEvery[0]} Timer id:`, args.id);
+            if(changeEveryDuration.milliseconds < 1) return argumentError(`Failed to create timer. Rotate timers with a changeEvery can not have a duration of 0ms or below. changeEvery value: ${changeEvery[0]} Timer id:`, args.id);
         }
 
         return {listValues, listLinks, epoch, compress, updatedChangeAt, erinnTimes, serverTimes, changeEveryDuration};

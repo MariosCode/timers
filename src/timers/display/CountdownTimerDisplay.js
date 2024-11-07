@@ -230,7 +230,7 @@ export class CountdownTimerDisplay extends TimerDisplay{
      */
     updateDisplay(newTimerData){
         // Cancel if updating display with this data is impossible
-        if(newTimerData.length/2 < this.depth) return timerDisplayError(`Countdown type timer display failed an update due to invalid timerData length. Length expected: ${this.depth*2} timerData:`, newTimerData); 
+        if(newTimerData.length/2 < this.depth) return timerDisplayError(`Countdown type timer display failed an update due to invalid timerData length. Length expected: ${this.depth*2} timerData:`, newTimerData, ' Timer display:', this.element); 
         
         this.timerData = newTimerData.slice();
 
@@ -412,28 +412,28 @@ export class CountdownTimerDisplay extends TimerDisplay{
         // Validate verbose
         returnObject.verbose = false;
         if('verbose' in args){
-            if(args['verbose'].length > 1) return timerDisplayCreationError('verbose can not have more than 1 value.');
+            if(args['verbose'].length > 1) return timerDisplayCreationError('Failed to create timer display. verbose can not have more than 1 value. Arguments:', arguments);
             if(args['verbose'][0].toLowerCase() === 'false') returnObject.verbose = false;
             else if(args['verbose'][0].toLowerCase() === 'true') returnObject.verbose = true;
-            else return timerDisplayCreationError('verbose must be true or false.');
+            else return timerDisplayCreationError('Failed to create timer display. verbose must be true or false. Arguments:', arguments);
         }
 
         // Validate hideLeading0
         returnObject.hideLeading0 = true;
         if('hideLeading0' in args){
-            if(args['hideLeading0'].length > 1) return timerDisplayCreationError('hideLeading0 can not have more than 1 value.');
+            if(args['hideLeading0'].length > 1) return timerDisplayCreationError('Failed to create timer display. hideLeading0 can not have more than 1 value. Arguments:', arguments);
             if(args['hideLeading0'][0].toLowerCase() === 'false') returnObject.hideLeading0 = false;
             else if(args['hideLeading0'][0].toLowerCase() === 'true') returnObject.hideLeading0 = true;
-            else return timerDisplayCreationError('hideLeading0 must be true or false.');
+            else return timerDisplayCreationError('Failed to create timer display. hideLeading0 must be true or false. Arguments:', arguments);
         }
 
         // Validate hideAll0
         returnObject.hideAll0 = true;
         if('hideAll0' in args){
-            if(args['hideAll0'].length > 1) return timerDisplayCreationError('hideAll0 can not have more than 1 value.');
+            if(args['hideAll0'].length > 1) return timerDisplayCreationError('Failed to create timer display. hideAll0 can not have more than 1 value. Arguments:', arguments);
             if(args['hideAll0'][0].toLowerCase() === 'false') returnObject.hideAll0 = false;
             else if(args['hideAll0'][0].toLowerCase() === 'true') returnObject.hideAll0 = true;
-            else return timerDisplayCreationError('hideAll0 must be true or false.');
+            else return timerDisplayCreationError('Failed to create timer display. hideAll0 must be true or false. Arguments:', arguments);
         }
 
         return returnObject;

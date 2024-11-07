@@ -343,10 +343,10 @@ export class TimerDisplay{
         let timerId = '';
         let timer = null;
         if(displayType !== 'clock'){
-            if(!('timer' in args)) return timerDisplayCreationError('"timer" setting is not set to a timer element\'s id.');
-            if(args.timer.length > 1) return timerDisplayCreationError('"timer" setting should only have 1 value.');
-            if($(`#${args.timer}`).length < 0) return timerDisplayCreationError(`"timer" setting must be set to a valid timer element\'s id. Could not find element with id "${args.timer}".`);
-            if( !( $($(`#${args.timer}`)[0]).data('timer') instanceof Timer ) ) return timerDisplayCreationError(`Failed to attach to a timer due to the provided "timer" element id not being an element with an instance of Timer or its subclasses.`);
+            if(!('timer' in args)) return timerDisplayCreationError('Failed to create timer display. "timer" setting is not set to a timer element\'s id. Arguments:', args);
+            if(args.timer.length > 1) return timerDisplayCreationError('Failed to create timer display. "timer" setting should only have 1 value. Arguments:', args);
+            if($(`#${args.timer}`).length < 0) return timerDisplayCreationError(`Failed to create timer display. "timer" setting must be set to a valid timer element\'s id. Could not find element with id "${args.timer}". Arguments:`, args);
+            if( !( $($(`#${args.timer}`)[0]).data('timer') instanceof Timer ) ) return timerDisplayCreationError(`Failed to create timer display. The provided timer element id "${args.timer}" is not an element with an instance of Timer or its subclasses. Arguments:`, args);
             // 1 Timer provided and it is valid. Store it to attach later.
             timerId = args.timer;
             timer = $($(`#${args.timer}`)[0]).data('timer');
@@ -355,8 +355,8 @@ export class TimerDisplay{
         // Validate depth. 1 is default and minimum across all displays.
         let depth = 1;
         if('depth' in args){
-            if(args.depth.length > 1) return timerDisplayCreationError('Timer displays can not have more than 1 depth.');
-            if(!Number.isInteger(Number(args.depth[0]))) return timerDisplayCreationError('depth must be a whole number.');
+            if(args.depth.length > 1) return timerDisplayCreationError('Failed to create timer display. Timer displays can not have more than 1 depth. Arguments:', args);
+            if(!Number.isInteger(Number(args.depth[0]))) return timerDisplayCreationError('Failed to create timer display. depth must be a whole number. Arguments:', args);
             depth = Math.max(Number(args.depth[0]), depth);
         }
 
@@ -373,7 +373,7 @@ export class TimerDisplay{
         if(displayType === 'clock') timeFormat = 'h:mm:ssS'; // Change this to change default for clock displays
         if(displayType === 'countdown') timeFormat = 'h:mm:ssS'; // Change this to change default for countdown displays
         if('timeFormat' in args){
-            if(args.timeFormat.length > 1) return timerDisplayCreationError('Timer displays can not have more than 1 timeFormat.');
+            if(args.timeFormat.length > 1) return timerDisplayCreationError('Failed to create timer display. Timer displays can not have more than 1 timeFormat. Arguments:', args);
 
             // Make the format not case sensitive
             timeFormat = `${args.timeFormat[0].slice(0,-1).toLowerCase()}${args.timeFormat[0][args.timeFormat[0].length - 1].toUpperCase()}`;
@@ -390,11 +390,11 @@ export class TimerDisplay{
 
             // Validate pattern
             if(formatType === 'S' || formatType === 'L'){
-                if (!validFormatReal.test(timeFormat.slice(0,-1))) return timerDisplayCreationError(`timeFormat "${timeFormat}" is an invalid format pattern.`);
+                if (!validFormatReal.test(timeFormat.slice(0,-1))) return timerDisplayCreationError(`Failed to create timer display. timeFormat "${timeFormat}" is an invalid format pattern. Arguments:`, args);
             }else if(formatType === 'E'){
-                if (!validFormatErinn.test(timeFormat.slice(0,-1))) return timerDisplayCreationError(`timeFormat "${timeFormat}" is an invalid format pattern.`);
+                if (!validFormatErinn.test(timeFormat.slice(0,-1))) return timerDisplayCreationError(`Failed to create timer display. timeFormat "${timeFormat}" is an invalid format pattern. Arguments:`, args);
             }else{
-                return timerDisplayCreationError('timeFormat must end in S (Server time), L (local time), or E (Erinn time).');
+                return timerDisplayCreationError('Failed to create timer display. timeFormat must end in S (Server time), L (local time), or E (Erinn time). Arguments:', args);
             }
 
             // timeFormat is valid
@@ -410,17 +410,17 @@ export class TimerDisplay{
         // Validate 12hour
         let is12hour = false;
         if('12hour' in args){
-            if(args['12hour'].length > 1) return timerDisplayCreationError('12hour can not have more than 1 value.');
+            if(args['12hour'].length > 1) return timerDisplayCreationError('Failed to create timer display. 12hour can not have more than 1 value. Arguments:', args);
             if(args['12hour'][0].toLowerCase() === 'false') is12hour = false;
             else if(args['12hour'][0].toLowerCase() === 'true') is12hour = true;
-            else return timerDisplayCreationError('12hour must be true or false.');
+            else return timerDisplayCreationError('Failed to create timer display. 12hour must be true or false. Arguments:', args);
         }
 
         // Validate suffix
         let suffixam = '';
         let suffixpm = '';
         if('suffix' in args){
-            if(args.suffix.length !== 2) return timerDisplayCreationError('suffix must have 2 values.');
+            if(args.suffix.length !== 2) return timerDisplayCreationError('Failed to create timer display. suffix must have 2 values. Arguments:', args);
             suffixam = args.suffix[0];
             suffixpm = args.suffix[1];
         }
@@ -429,9 +429,9 @@ export class TimerDisplay{
         let entryFormat = '%t %v';
         if(displayType === 'clock') entryFormat = '%t';
         if('entryFormat' in args){
-            if(args.entryFormat.length > 1) return timerDisplayCreationError('entryFormat can not have more than 1 value.');
-            if(args.entryFormat[0].split('%t').length > 2) return timerDisplayCreationError('entryFormat can not have more than 1 instance of "%t".');
-            if(args.entryFormat[0].split('%v').length > 2) return timerDisplayCreationError('entryFormat can not have more than 1 instance of "%v".');
+            if(args.entryFormat.length > 1) return timerDisplayCreationError('Failed to create timer display. entryFormat can not have more than 1 value. Arguments:', args);
+            if(args.entryFormat[0].split('%t').length > 2) return timerDisplayCreationError('Failed to create timer display. entryFormat can not have more than 1 instance of "%t". Arguments:', args);
+            if(args.entryFormat[0].split('%v').length > 2) return timerDisplayCreationError('Failed to create timer display. entryFormat can not have more than 1 instance of "%v". Arguments:', args);
             entryFormat = args.entryFormat[0];
         }
 
@@ -453,14 +453,14 @@ export class TimerDisplay{
         let startAtEntry = 1;
         let endAtEntry = depth;
         if('startAtEntry' in args){
-            if(args.startAtEntry.length > 1) return timerDisplayCreationError('startAtEntry can not have more than 1 value.');
-            if(!Number.isInteger(Number(args.startAtEntry[0]))) return timerDisplayCreationError('startAtEntry must be a whole number.');
+            if(args.startAtEntry.length > 1) return timerDisplayCreationError('Failed to create timer display. startAtEntry can not have more than 1 value. Arguments:', args);
+            if(!Number.isInteger(Number(args.startAtEntry[0]))) return timerDisplayCreationError('Failed to create timer display. startAtEntry must be a whole number. Arguments:', args);
             // Must be at least 1, at most depth
             startAtEntry =  Math.min( Math.max(Number(args.startAtEntry[0]), 1) , depth );
         }
         if('endAtEntry' in args){
-            if(args.endAtEntry.length > 1) return timerDisplayCreationError('endAtEntry can not have more than 1 value.');
-            if(!Number.isInteger(Number(args.endAtEntry[0]))) return timerDisplayCreationError('endAtEntry must be a whole number.');
+            if(args.endAtEntry.length > 1) return timerDisplayCreationError('Failed to create timer display. endAtEntry can not have more than 1 value. Arguments:', args);
+            if(!Number.isInteger(Number(args.endAtEntry[0]))) return timerDisplayCreationError('Failed to create timer display. endAtEntry must be a whole number. Arguments:', args);
             // Must be at least startAtEntry, at most depth
             endAtEntry = Math.min( Math.max(Number(args.endAtEntry[0]), startAtEntry) , depth );
         }
@@ -473,7 +473,7 @@ export class TimerDisplay{
             args.query.forEach(str => {
                 if(timer.list.indexOf(str) === -1) invalidEntryValue.push(str);
             });
-            if(invalidEntryValue.length > 0) return timerDisplayCreationError(`query contains ${(invalidEntryValue.length > 1 ? 'multiple entry values' : 'an entry value')} not present in the timer's list: "${invalidEntryValue.join('", "')}".`);
+            if(invalidEntryValue.length > 0) return timerDisplayCreationError(`Failed to create timer display. query contains ${(invalidEntryValue.length > 1 ? 'multiple entry values' : 'an entry value')} not present in the timer's list: "${invalidEntryValue.join('", "')}". Arguments:`, args);
             query = args.query.slice();
         }
 
