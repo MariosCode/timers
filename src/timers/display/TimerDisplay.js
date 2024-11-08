@@ -288,6 +288,8 @@ export class TimerDisplay{
                 days = `${days}${(verbose ? ' Days, ' : ':')}`;
             }else if(milliseconds !== -1){
                 days = `${days}${(verbose ? ' Days, ' : '.')}`;
+            }else{
+                days = `${days}${(verbose ? ' Days' : '')}`;
             }
         }else{
             days = '';
@@ -298,6 +300,8 @@ export class TimerDisplay{
                 hours = `${hours}${(verbose ? ' Hours, ' : ':')}`;
             }else if(milliseconds !== -1){
                 hours = `${hours}${(verbose ? ' Hours, ' : '.')}`;
+            }else{
+                hours = `${hours}${(verbose ? ' Hours' : '')}`;
             }
         }else{
             hours = '';
@@ -308,6 +312,8 @@ export class TimerDisplay{
                 minutes = `${minutes}${(verbose ? ' Minutes, ' : ':')}`;
             }else if(milliseconds !== -1){
                 minutes = `${minutes}${(verbose ? ' Minutes, ' : '.')}`;
+            }else{
+                minutes = `${minutes}${(verbose ? ' Minutes' : '')}`;
             }
         }else{
             minutes = '';
@@ -316,6 +322,8 @@ export class TimerDisplay{
         if(seconds !== -1){
             if(milliseconds !== -1){
                 seconds = `${seconds}${(verbose ? ' Seconds, ' : '.')}`;
+            }else{
+                seconds = `${seconds}${(verbose ? ' Seconds' : '')}`;
             }
         }else{
             seconds = '';
